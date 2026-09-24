@@ -10,7 +10,7 @@
 |---|---|
 | Repo | `ake117/AP_Quotation_by_Chat` (private, branch `main`) |
 | Local path | `/home/ake/AI_Projects/AP_QT_Generator` |
-| Framework | CodeIgniter 3.1.9 + Smarty template + AdminLTE 2.4 (skin ต่อ account) |
+| Framework | CodeIgniter **3.1.13** + Smarty template + AdminLTE 2.4 (skin ต่อ account) + PhpSpreadsheet 5.10 (ผ่าน composer) |
 | Database | MySQL/MariaDB — schema `production` |
 | ต้นทาง DB dump | `code/database/production.sql` (Navicat dump จาก production.ewitewit.com, MySQL 5.7, 23/09/2026) |
 | Dev server | `php -S 0.0.0.0:8091 -t code/public_html` |
@@ -82,6 +82,19 @@ AP_QT_Generator/
 
 Import ต้องใช้ `sql_mode='NO_AUTO_VALUE_ON_ZERO,ALLOW_INVALID_DATES'` เพราะ dump มี `'0000-00-00 00:00:00'`
 
+## Features ที่พัฒนาแล้ว (25/09/2026)
+
+- **Excel engine ใหม่** — PHPExcel → PhpSpreadsheet 5.10 ผ่าน compatibility bridge (`libraries/Excel.php`) โค้ด controller เดิมรันได้ไม่ต้องแก้; ติดตั้งด้วย `composer require phpoffice/phpspreadsheet`
+- **รับเฉพาะ .xlsx** — upload validation ปฏิเสธไฟล์อื่น, writer ใช้ Xlsx เท่านั้น
+- **แก้ contact name ได้** — ช่อง "Contact Name" ในหน้า Quotation AP (Load/Save ผ่าน AJAX) → เขียนลง cell **E10** ของไฟล์ export; เก็บใน `quotation_ap_data.contact_name`; endpoint: `GET/POST /admin/quotationAP/edit_contact`
+- **Export เป็น 2 zip** — ① `*.zip` เฉพาะ quotation xlsx (ไฟล์ Mediaplan ถูกตัดออก) ② `*_pdf.zip` เฉพาะ PDF
+- **PDF อัตโนมัติ** — ทุก quotation xlsx ถูก convert เป็น PDF ด้วย LibreOffice headless (`soffice --convert-to pdf`) ระหว่าง export
+- **ชื่อไฟล์ ≤ 74 ตัวอักษร** (ไม่รวมนามสกุล) — `sanitize_text()` ใช้ mb_substr นับ Thai chars ถูกต้อง
+
+### รอ input จากผู้ใช้
+- สูตรคำนวณ media fee ใหม่ (จะเปลี่ยนค่าหลาย cell ในไฟล์ export)
+- รูปภาพใหม่สำหรับแนบใน template.xlsx
+
 ## สิ่งที่ถูกถอดออก (cleanup เมื่อ 25/09/2026)
 
 - **DB**: ตาราง legacy (`newsletter_email`, `videos`, `frontend_language`, `migrations`) + โมดูลในตาราง `modules` 11 รายการ (Posts, Floor, Room type, Banners, Gallery, Project rooms, Menu Manager, Report, Agents, Estimated, Production Cost) พร้อม actions/permissions
@@ -98,6 +111,7 @@ backups/production_clean_15tables_2026-09-25.sql.gz # หลัง cleanup ร�
 ## ปัญหาที่ทราบ / TODO
 
 - [ ] รหัสผ่าน MD5 — ควร migrate เป็น password_hash()
+- [x] ~~PHPExcel ล้าสมัย~~ → แก้แล้วด้วย PhpSpreadsheet (25/09/2026)
 - [ ] ไม่มี FOREIGN KEY ใดๆ (integrity อยู่ที่ app layer)
 - [ ] `quotations.quotation_no` ไม่ normalize (N/A, format ปนกัน), `production_id` เป็น varchar
 - [ ] Charset `utf8` (3-byte) — เก็บ emoji ไม่ได้ ควรรื้อเป็น utf8mb4 ทั้ง schema
