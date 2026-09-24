@@ -265,26 +265,6 @@
 						</li>
 					{/if*}
 
-                                        {if wpn_link_permission('admin/estimated') }
-						<li {if $activelink==='estimated'}class="active"{/if}>
-                                                    <a href="{$base_url}/admin/estimated"><i class="fa fa-users"></i> <span>{ci_language line="mod_estimated" default='Estimated'}</span></a>
-						</li>
-					{/if}
-                                        
-
-                                        {if wpn_link_permission('admin/production_cost') }
-						<li {if $activelink==='production_cost'}class="active"{/if}>
-                                                    <a href="{$base_url}/admin/production_cost"><i class="fa fa-braille"></i> <span>{ci_language line="mod_production_cost" default='Production Cost'}</span></a>
-						</li>
-					{/if}
-                                        
-
-                                        {if wpn_link_permission('admin/quotation') }
-						<li {if $activelink==='quotation'}class="active"{/if}>
-                                                    <a href="{$base_url}/admin/quotation"><i class="fa fa-building"></i> <span>{ci_language line="mod_quotation" default='Quotation'}</span></a>
-						</li>
-					{/if}
-                                        
                                         {if wpn_link_permission('admin/quotationAP') }
 						<li {if $activelink==='quotationAP'}class="active"{/if}>
                                                     <a href="{$base_url}/admin/quotationAP"><i class="fa fa-building"></i> <span>{ci_language line="mod_quotationAP" default='Quotation AP'}</span></a>

@@ -30,7 +30,7 @@ class Logon extends MX_Controller {
 			$this->load->load->view('logon/index');
 		else {
 			if($this->auth->login($this->input->post('email'), $this->input->post('password')))
-				return redirect('admin');
+				return redirect('admin/quotationAP');
 			else {
 				$this->session->set_flashdata('msg_auth', wpn_lang('msg_login_error', 'Your login failed, try again.'));
 				return redirect('admin/login');
