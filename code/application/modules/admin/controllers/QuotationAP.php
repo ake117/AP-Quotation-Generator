@@ -264,8 +264,8 @@ class QuotationAP extends MX_Controller
             
     }    
     
-    function sanitize_text($text, $sep = '-', $len = 500) {
-        return trim(substr(preg_replace('/[^_a-zA-Z0-9ก-ฮั็่้๊๋าำิีึืุูะเแโใไๅๆ๐-๘ฯ์]+/iu', $sep, strip_tags(trim($text))), 0, $len));
+    function sanitize_text($text, $sep = '-', $len = 74) {
+        return rtrim(trim(mb_substr(preg_replace('/[^_a-zA-Z0-9ก-ฮั็่้๊๋าำิีึืุูะเแโใไๅๆ๐-๘ฯ์]+/iu', $sep, strip_tags(trim($text))), 0, $len, 'UTF-8')), $sep);
     }
     
     
@@ -380,45 +380,76 @@ class QuotationAP extends MX_Controller
         }                                        
     }
     
-    function zip_quotationAP($folder="") {        
-        
-        $this->load->library('zip');
-        
-        $filepath = FCPATH."upload/quotation/ap/temp/{$folder}/";
-        $archivepath = FCPATH."upload/quotation/ap/archive/";        
+    /**
+     * Zip the generated files into TWO separate archives:
+     *  - {folder}.zip          : quotation .xlsx files only (media plan excluded)
+     *  - {folder}_pdf.zip      : PDF files only (filled when PDF conversion runs)
+     * Media plan files are removed from the temp dir instead of being zipped.
+     */
+    function zip_quotationAP($folder="") {
 
-        // File name
-        $filename = "{$folder}.zip";
-        
-        
-        $zip = new ZipArchive;
-        
-        if ($zip->open($archivepath.$filename, ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE) === TRUE)
-        {
-            if ($handle = opendir($filepath))
-            {
-                // Add all files inside the directory
-                while (false !== ($entry = readdir($handle)))
-                {
-                    if ($entry != "." && $entry != ".." && !is_dir($filepath . $entry))
-                    {                        
-                        $zip->addFile($filepath . $entry, $folder."/".$entry);
+        $filepath    = FCPATH."upload/quotation/ap/temp/{$folder}/";
+        $archivepath = FCPATH."upload/quotation/ap/archive/";
+
+        // File names
+        $xlsxZipName = "{$folder}.zip";
+        $pdfZipName  = "{$folder}_pdf.zip";
+
+        // Remove media plan files from the temp dir (not part of any zip)
+        foreach (glob($filepath."Mediaplan*") as $mediaplanFile) {
+            @unlink($mediaplanFile);
+        }
+
+        $xlsxZip = new ZipArchive;
+        $pdfZip  = new ZipArchive;
+
+        $xlsxZipOk = $xlsxZip->open($archivepath.$xlsxZipName, ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE) === TRUE;
+        $pdfZipOk  = $pdfZip->open($archivepath.$pdfZipName,  ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE) === TRUE;
+
+        $xlsxCount = 0;
+        $pdfCount  = 0;
+
+        if ($xlsxZipOk || $pdfZipOk) {
+
+            if ($handle = opendir($filepath)) {
+                while (false !== ($entry = readdir($handle))) {
+                    if ($entry == "." || $entry == ".." || is_dir($filepath.$entry)) {
+                        continue;
+                    }
+
+                    $entryLower = strtolower($entry);
+                    $isPdf  = (substr($entryLower, -4) === '.pdf');
+                    $isXlsx = (substr($entryLower, -5) === '.xlsx');
+
+                    if ($isPdf && $pdfZipOk) {
+                        $pdfZip->addFile($filepath.$entry, $folder."/".$entry);
+                        $pdfCount++;
+                    } elseif ($isXlsx && $xlsxZipOk) {
+                        $xlsxZip->addFile($filepath.$entry, $folder."/".$entry);
+                        $xlsxCount++;
                     }
                 }
                 closedir($handle);
             }
-            $zip->close();
-            
+
+            if ($xlsxZipOk) { $xlsxZip->close(); }
+            if ($pdfZipOk)  { $pdfZip->close(); }
+
             array_map('unlink', glob("{$filepath}/*.*"));
-            rmdir($filepath);
-            
-            return "/upload/quotation/ap/archive/".$filename;
+            @rmdir($filepath);
+
+            // PDF zip only offered when it actually has content
+            $pdfLink = ($pdfZipOk && $pdfCount > 0)
+                ? " <a href='/upload/quotation/ap/archive/{$pdfZipName}'>PDF</a>"
+                : "";
+
+            return "/upload/quotation/ap/archive/".$xlsxZipName.$pdfLink;
         } else {
             return "error";
-        }                
-    }    
-    
-    
+        }
+    }
+
+
     // Upload File
     public function uploadFile($uploadFile, $dir_path, $name = ""){
         
