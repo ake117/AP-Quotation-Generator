@@ -412,7 +412,10 @@ class QuotationAP extends MX_Controller
                 
                 $objWriter->setPreCalculateFormulas(true);
 //                ob_end_clean();                                               
-                $objWriter->save($pathSaveFile1);                
+                $objWriter->save($pathSaveFile1);
+
+                // Convert the quotation to PDF (LibreOffice headless) alongside the .xlsx
+                $this->convert_to_pdf($pathSaveFile1);
                 
 //                if ($key==2) { break; }
                 
@@ -420,6 +423,27 @@ class QuotationAP extends MX_Controller
         }                                        
     }
     
+    /**
+     * Convert an .xlsx file to PDF using LibreOffice headless.
+     * The PDF is written next to the source file. Returns true on success.
+     */
+    function convert_to_pdf($xlsx_path)
+    {
+        if (!file_exists($xlsx_path)) {
+            return false;
+        }
+
+        $dir = dirname($xlsx_path);
+        $cmd = 'soffice --headless --norestore --convert-to pdf --outdir '
+             . escapeshellarg($dir) . ' ' . escapeshellarg($xlsx_path)
+             . ' 2>&1';
+
+        exec($cmd, $output, $exitCode);
+
+        $pdf = substr($xlsx_path, 0, -5) . '.pdf';
+        return ($exitCode === 0 && file_exists($pdf));
+    }
+
     /**
      * Zip the generated files into TWO separate archives:
      *  - {folder}.zip          : quotation .xlsx files only (media plan excluded)
