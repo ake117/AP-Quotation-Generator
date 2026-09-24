@@ -17,3 +17,4 @@ code/application/logs/
 code/application/cache/
 code/application/views/_layout/templates_c/
 backups/
+exported_*/
