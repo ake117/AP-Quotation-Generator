@@ -1,0 +1,613 @@
+.signup-step {
+
+}
+.cb-slideshow li span:after {
+    content: unset;
+}
+/* The container */
+.ch_floor {
+    display: block;
+    position: relative;
+    padding-left: 30px;
+    margin-bottom: 12px;
+    cursor: pointer;
+    font-size: 16px;
+    line-height: 21px;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Hide the browser's default radio button */
+.ch_floor input {
+    position: absolute;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* Create a custom radio button */
+.checkmark {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    border: 1px solid #000;
+}
+
+/* On mouse-over, add a grey background color */
+.ch_floor:hover input ~ .checkmark {
+    background-color: #ccc;
+}
+
+/* When the radio button is checked, add a blue background */
+.ch_floor input:checked ~ .checkmark {
+
+}
+
+/* Create the indicator (the dot/circle - hidden when not checked) */
+.checkmark:after {
+    content: "";
+    position: absolute;
+    display: none;
+}
+
+/* Show the indicator (dot/circle) when checked */
+.ch_floor input:checked ~ .checkmark:after {
+    display: block;
+}
+
+/* Style the indicator (dot/circle) */
+.ch_floor .checkmark:after {
+    top: 4px;
+    left: 4px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #B4904F;
+}
+
+.floor_img{
+    margin: 0 auto;
+    display: block;
+    width: 100%;
+}
+
+#page-content-wrapper {
+    width: 95%;
+    max-width: 1200px;
+}
+
+.ch_floor {
+    margin-bottom: 0.10rem;
+}
+
+::-webkit-scrollbar-track
+{
+	-webkit-box-shadow: inset 0 0 6px rgba(0,0,0,0.3);
+	background-color: #F5F5F5;
+}
+
+::-webkit-scrollbar
+{
+	width: 6px;
+	background-color: #F5F5F5;
+}
+
+::-webkit-scrollbar-thumb
+{
+	background-color: rgba(218, 199, 159, 1);
+}
+
+.bt_select_room {
+    position: relative;
+    display: block;
+    margin-top: 1rem;
+}
+
+span.bt_room {
+    padding: 0.1rem 4rem;
+    background-color: #b39e7f;
+    font-size: 1.8rem;
+    font-weight: bold;
+    background-size: 100% 1px;
+    width: 100%;
+    margin: 2rem 1rem;
+}
+
+span.bt_room.room_active {
+    cursor: pointer;
+    background: #c9c6bf;
+    position: relative;
+}
+
+.stauts_select {
+    position: relative;
+    margin: 1rem;
+}
+
+.stauts_select span {
+    margin: 0 2.5rem;
+    position: relative;
+}
+
+span.s_place:before {
+    content: '';
+    width: 1.5rem;
+    height: 1.5rem;
+    background: #c9c6bf;
+    position: absolute;
+    top: 0.3rem;
+    left: -2.5rem;
+}
+
+span.s_busy:before {
+    content: '';
+    width: 1.5rem;
+    height: 1.5rem;
+    background: #b39e7f;
+    position: absolute;
+    top: 0.3rem;
+    left: -2.5rem;
+}
+
+.book-info {
+    background-color: rgba(255,255,255,1);
+}
+
+label.form-check-label {
+    width: 100%;
+    line-height: 2rem;
+}
+input.form-check-input {
+    width: 1.2rem;
+    margin: 0px;
+}
+
+.bt_pay button:hover, .bt_pay button:focus {
+    color: #B38F4F;
+}
+
+.bt_room.room_active.checktrue:after{
+    content: "";
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    right: 5px;
+    top: 5px;
+    color: #fff;
+    background-image: url(/assets/images/grande/step.png);
+    background-position: 0 -40px;
+}
+
+.image_show_floor img {
+    max-height: 10em;
+    max-width: 100%;
+    width: auto;
+    margin: 0 auto;
+    display: block;
+}
+
+.bt_room.room_active.checktrue {
+    box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+}
+
+.bt_room.room_active:hover {
+    box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23);
+}
+
+.floor_img_show {
+    -webkit-transition: opacity 1s ease-in-out;
+    -moz-transition: opacity 1s ease-in-out;
+    -o-transition: opacity 1s ease-in-out;
+    -ms-transition: opacity 1s ease-in-out;    
+    transition: opacity 1s ease-in-out;
+}
+
+.element-wrapper {
+    position: absolute;
+    -webkit-perspective: 300px;
+    -moz-perspective: 300px;
+    perspective: 300px;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 999;
+    /*background-image: -webkit-radial-gradient(circle, #212c39, #0c1014 40%);
+    background-image: radial-gradient(circle, #212c39, #0c1014 40%);*/
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.element {
+  width: 50px;
+  height: 50px;
+  background: #b3904f;
+  position: absolute;
+  left: 50%;
+  margin-left: -25px;
+  top: 50%;
+  margin-top: -25px;
+}
+
+.loading {
+    font-size: 1rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: #b3904f;
+  top: 50%;
+  margin-top: 25px;
+  position: absolute;
+  width: 100%;
+  text-align: center;
+}
+
+@-webkit-keyframes translateIn {
+  30% {
+    -webkit-transform: rotateX(60deg) rotateY(0deg) rotateZ(45deg) translateZ(20px) scale(0.95);
+    opacity: 0.25;
+  }
+  100% {
+    -webkit-transform: rotateX(65deg) rotateY(0deg) rotateZ(45deg) translateZ(0px) scale(0.85);
+    opacity: 0;
+  }
+}
+@keyframes translateIn {
+  30% {
+    -webkit-transform: rotateX(60deg) rotateY(0deg) rotateZ(45deg) translateZ(20px) scale(0.95);
+    transform: rotateX(60deg) rotateY(0deg) rotateZ(45deg) translateZ(20px) scale(0.95);
+    opacity: 0.25;
+  }
+  100% {
+    -webkit-transform: rotateX(65deg) rotateY(0deg) rotateZ(45deg) translateZ(0px) scale(0.85);
+    transform: rotateX(65deg) rotateY(0deg) rotateZ(45deg) translateZ(0px) scale(0.85);
+    opacity: 0;
+  }
+}
+.element {
+  opacity: 0;
+}
+.element:nth-of-type(1) {
+  -webkit-transform: rotateX(70deg) rotateY(0deg) rotateZ(45deg) translateZ(30px);
+  transform: rotateX(70deg) rotateY(0deg) rotateZ(45deg) translateZ(30px);
+  -webkit-animation: translateIn 1.5s ease-in infinite 500ms;
+  animation: translateIn 1.5s ease-in infinite 500ms;
+}
+.element:nth-of-type(2) {
+  -webkit-transform: rotateX(70deg) rotateY(0deg) rotateZ(45deg) translateZ(60px);
+  transform: rotateX(70deg) rotateY(0deg) rotateZ(45deg) translateZ(60px);
+  -webkit-animation: translateIn 1.5s ease-in infinite 700ms;
+  animation: translateIn 1.5s ease-in infinite 700ms;
+}
+.element:nth-of-type(3) {
+  -webkit-transform: rotateX(70deg) rotateY(0deg) rotateZ(45deg) translateZ(90px);
+  transform: rotateX(70deg) rotateY(0deg) rotateZ(45deg) translateZ(90px);
+  -webkit-animation: translateIn 1.5s ease-in infinite 800ms;
+  animation: translateIn 1.5s ease-in infinite 800ms;
+}
+
+@-webkit-keyframes scaleIn {
+  80% {
+    -webkit-transform: rotateX(65deg) rotateY(0deg) rotateZ(45deg) scale(1.25);
+    opacity: 0.1;
+  }
+  100% {
+    -webkit-transform: rotateX(65deg) rotateY(0deg) rotateZ(45deg) scale(1);
+    opacity: 0;
+  }
+}
+@keyframes scaleIn {
+  80% {
+    -webkit-transform: rotateX(65deg) rotateY(0deg) rotateZ(45deg) scale(1.25);
+    transform: rotateX(65deg) rotateY(0deg) rotateZ(45deg) scale(1.25);
+    opacity: 0.1;
+  }
+  100% {
+    -webkit-transform: rotateX(65deg) rotateY(0deg) rotateZ(45deg) scale(1);
+    transform: rotateX(65deg) rotateY(0deg) rotateZ(45deg) scale(1);
+    opacity: 0;
+  }
+}
+.large-square {
+  width: 70px;
+  height: 70px;
+  background: #b3904f;
+  position: absolute;
+  left: 50%;
+  margin-left: -35px;
+  top: 50%;
+  margin-top: -35px;
+  -webkit-transform: rotateX(60deg) rotateY(0deg) rotateZ(45deg) scale(0);
+  transform: rotateX(60deg) rotateY(0deg) rotateZ(45deg) scale(0);
+  opacity: 0;
+  -webkit-animation: scaleIn 3s linear infinite 500ms;
+  animation: scaleIn 3s linear infinite 500ms;
+}
+
+@media screen and (min-width: 768px){
+    .navbar-brand {
+        left: inherit;
+        width: 3.5rem;
+        margin: 0 auto;
+        top: 1rem;
+        display: block;
+        position: inherit;
+    }    
+    .book-info {
+        padding: 0;
+        margin: 3rem 0 3rem 0;
+        padding-bottom: 3rem;
+    }
+    .grande-form ul.signup-page.en li:nth-child(2) {
+        width: 40rem;
+        margin-left: -20rem;
+    }
+    .signup-step {
+        right: 10rem;
+        top: 13rem;
+    }
+    
+    .select_floor_desktop {
+        text-align: left;
+        position: absolute;
+        left: -16rem;
+        border: 1px solid;
+        padding: 2rem 0.3rem 2rem 1.5rem;
+        width: 15rem;
+        height: auto;
+    }
+
+    .select_floor_desktop label {
+        width: 100%;
+    }
+    
+    .select_floor_desktop{display:block;}
+    .select_floor_mobile{display:none;}
+    .floor_img {
+        margin: 0 auto;
+        display: block;
+        width: auto;
+        height: 400px;
+    }
+    .grande-form ul.signup-page li:nth-child(2) {
+        width: 40rem;
+        margin-left: -20rem;
+    }
+    
+    .grande-form ul.signup-page li:nth-child(4) {
+        width: 40rem;
+        margin-left: -20rem;
+    }
+    
+    .pnl-btn-signup {
+        width: 20rem;
+        left: 50%;
+        margin-left: -10rem !important;
+        bottom: 0;
+        position: relative;
+    }
+    .floor_img_show {
+        position: relative;
+        display: block;
+        height: auto;
+        min-height: 340px;
+        width: 100%;
+        overflow: hidden;
+        /*background: rgba(0,0,0,0.15);*/
+    }
+    .lang-mnu {
+        top: 2rem;
+    }
+    .hamburger {
+        top: 2rem;
+    }
+    body.ibooking {
+        overflow: visible;
+    }
+    .fixed-top {
+        /*position: relative;*/
+    }
+    .book-info .text {
+        margin-bottom: 10rem;
+    }
+    .book-info.booking {
+        padding-bottom: 0;
+        height: 67%;
+        min-height: 24em;
+        margin-top: 2em;
+        margin-bottom: 0;
+    }
+    .book-info.booking .text {
+        margin-bottom: 0rem;
+        padding-top: 1em;
+        position: absolute;
+    }
+    .one_image_floor img{
+        max-height: 15em !important;
+    }
+    img.logo-grande {
+        max-height: 90px;
+        width: unset !important;
+        height: unset !important;
+        margin-top: unset;
+    }
+}
+
+@media screen and (max-width: 1367px) and (min-width: 769px){
+    .image_show_floor img {
+        max-height: 9em;
+    }
+    .book-info.booking {
+        height: 65%;
+    }
+}
+
+@media screen and (max-width: 769px){
+    ul.signup-page {
+        margin-top: 7rem;
+    }
+    .navbar-brand {
+        width: 8rem;
+    }
+    .navbar {
+        /*background: none;*/
+    }
+    .select_floor_desktop{display:none;}
+    .select_floor_mobile{display:block;}
+    .navbar-brand .logo-grande {
+        width: auto;
+        height: 9rem;
+        margin-top: 0rem;
+    }
+    .book-info {
+        margin: 12rem auto 6rem;
+    }
+    #page-content-wrapper {
+        width: 88%;
+    }
+    .grande-form {
+        margin: 8rem auto 0.5rem;
+    }
+    .select_floor_mobile, .select_floor_mobile select {
+        margin: 0.5rem 0;
+    }
+    p.title_booking {
+        font-size: 1.9rem;
+        font-weight: bold;
+    }
+    span.br {display: block;}
+    .image_show_floor {
+        display: block !important;
+        overflow: unset !important;
+    }
+    .image_show_floor img {
+        width: 100% !important;
+    }
+    .navbar {
+        height: 11.5rem;
+    }
+    .image_show_floor a {
+        width: 100% !important;
+    }
+    label.form-check-label {
+        line-height: 3rem;
+    }
+    .grande-form {
+        margin: 0rem auto 0.5rem;
+    }
+    .bt_pay {
+        bottom: -2rem;
+        left: 0rem;
+        width: 100%;
+    }
+    button.omise-checkout-button {
+        width: 100%;
+    }
+    p.title_booking {
+        position: relative;
+        padding-top: 6rem;
+    }
+    span.bt_room.room_active {
+        padding: 0 2rem;
+        width: 48%;
+        margin: 2px 1px;
+        text-align: center;
+        display: inline-block;
+    }
+    .bt_pay {
+        position: relative;
+        left: 0 !important;
+    }
+    .book-info.booking .col-12.col-md-6 {
+        padding: 0px;
+    }
+    .form-check-inline {
+        margin-top: 5px !important;
+    }
+    .m_dropdown {
+        position: relative;
+    }
+    .m_dropdown:after {
+        position: absolute;
+        content: '▾';
+        width: 10px;
+        height: 10px;
+        right: 1rem;
+        top: 0.7rem;
+    }
+    .row.m_dropdown select {
+        padding-left: 1rem;
+    }
+}
+
+@media screen and (max-width: 768px) and (min-width: 768px){
+    .signup-step {
+        right: 0rem;
+        top: 20rem;
+    }
+    p.title_booking {
+        padding-top: 0rem;
+    }
+    .navbar-brand {
+        width: 68px;
+    }
+    .image_show_floor img {
+        width: auto !important;
+        height: auto;
+    }
+    .grande-form {
+        overflow: unset !important;
+    }
+    .image_show_floor a {
+        width: 50% !important;
+        float: left;
+    }
+    .image_show_floor {
+        display: block !important;
+        overflow: auto !important;
+    }
+    .bt_pay {
+        width: auto;
+        left: 20.4rem !important;
+        bottom: -0.9rem;
+    }
+    
+    .grande-form.active4 label.form-check-label {
+        line-height: 2rem;
+    }
+    .book-info.booking.ipadshow{
+        height: 52% !important;
+    }
+    /*.grande-form.active4 .bt_pay {
+        bottom: -5rem !important;
+    }
+    .grande-form.active4 .row.pnl-btn-signup {
+        width: 100%;
+        left: 0;
+        margin-left: 0px !important;
+    }
+    .grande-form.active4 button.btn-grande.g-border.back {
+        width: 100%;
+    }*/
+}
+
+@media screen and (max-width: 1024px) and (min-width: 1024px){
+    .grande-form ul.signup-page.en li:nth-child(2) {
+        margin-left: -15rem;
+    }
+    .signup-step {
+        right: 5rem;
+        top: 13rem;
+    }
+    .book-info.booking {
+        height: 50%;
+    }
+}    
+
+
+/* end css */
+
+
+

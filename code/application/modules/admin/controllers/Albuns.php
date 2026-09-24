@@ -1,0 +1,162 @@
+<?php
+
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+class Albuns extends MX_Controller
+{
+    public function __construct() {
+        parent::__construct();
+    }
+
+
+    	public function index()
+	{
+		$this->load->model('album');
+		$this->load->library('table');
+
+		$layout_vars = array();
+		$content_vars = array();
+
+		// Template da tabela
+		$this->table->set_template(array('table_open'  => '<table id="grid" class="table table-striped">'));
+		$this->table->set_heading('#', 'Cover', 'Title', 'Data', 'Status', 'Action');
+		$query = $this->album->get_list();
+
+		foreach($query->result() as $row)
+		{
+
+			$capa_properties = array(
+            	'src' => base_url() . '/media/capas/' . $row->capa,
+            	'class' => 'img-responsive',
+            	'width' => '120',
+            	'alt' => $row->titulo
+            );
+            $capa = img($capa_properties);
+
+			$this->table->add_row(
+				$row->id,
+				$capa,
+				anchor('admin/fotos/index/'.$row->id, glyphicon('picture') . $row->titulo),
+				mdate('%d/%m/%Y - %H:%i', strtotime($row->created)),
+				status_post($row->status),
+				div(array('class'=>'btn-group btn-group-xs')).
+				anchor('admin/fotos/index/'.$row->id, glyphicon('picture'), array('class' => 'btn btn-default')).
+				anchor('admin/albuns/edit/'.$row->id, glyphicon('edit'), array('class' => 'btn btn-default')).
+				'<button class="btn btn-default" onClick="return confirm(\''.site_url('admin/albuns/delete/' . $row->id).'\');">'.glyphicon('trash').'</button>' .
+				div(null,true)
+			);
+		}
+
+		$content_vars['listagem'] = $this->table->generate();
+		$this->wpanel->load_view('albuns/index', $content_vars);
+	}
+
+	public function add()
+	{
+		$layout_vars = array();
+		$content_vars = array();
+
+		$this->form_validation->set_rules('titulo', 'Title', 'required');
+
+		if ($this->form_validation->run() == FALSE)
+		{
+			$this->wpanel->load_view('albuns/add', $content_vars);
+		} else {
+
+			$this->load->model('album');
+
+			$data_save = array();
+			$data_save['user_id'] = $this->auth->get_login_data('id');
+			$data_save['titulo'] = $this->input->post('titulo');
+			$data_save['descricao'] = $this->input->post('descricao');
+			$data_save['status'] = $this->input->post('status');
+			$data_save['created'] = date('Y-m-d H:i:s');
+			$data_save['updated'] = date('Y-m-d H:i:s');
+			$data_save['capa'] = $this->album->upload_media('capas');
+
+			$new_post = $this->album->save($data_save);
+			mkdir('./media/albuns/'.$new_post);
+
+			if($new_post)
+			{
+				$this->session->set_flashdata('msg_system', 'Album saved successfully..');
+				redirect('admin/albuns');
+			} else {
+				$this->session->set_flashdata('msg_system', 'Erro ao salvar o album.');
+				redirect('admin/albuns');
+			}
+		}
+	}
+
+	public function edit($id = null)
+	{
+		$layout_vars = array();
+		$content_vars = array();
+
+		$this->form_validation->set_rules('titulo', 'Title', 'required');
+
+		if ($this->form_validation->run() == FALSE)
+		{
+
+			if($id == null){
+				$this->session->set_flashdata('msg_system', 'Album inexistente.');
+				redirect('admin/albuns');
+			}
+
+			$this->load->model('album');
+			$content_vars['id'] = $id;
+			$content_vars['row'] = $this->album->get_by_id($id)->row();
+			$this->wpanel->load_view('albuns/edit', $content_vars);
+
+		} else {
+
+			$this->load->model('album');
+
+			$data_save = array();
+			$data_save['titulo'] = $this->input->post('titulo');
+			$data_save['descricao'] = $this->input->post('descricao');
+			$data_save['status'] = $this->input->post('status');
+			$data_save['updated'] = date('Y-m-d H:i:s');
+
+			if($this->input->post('alterar_imagem')=='1')
+			{
+				$query = $this->album->get_by_id($id)->row();
+				$this->album->remove_media('capas/' . $query->capa);
+				$data_save['capa'] = $this->album->upload_media('capas');
+			}
+
+			$new_post = $this->album->update($id, $data_save);
+
+			if($new_post)
+			{
+				$this->session->set_flashdata('msg_system', 'Album saved successfully..');
+				redirect('admin/albuns');
+			} else {
+				$this->session->set_flashdata('msg_system', 'Erro ao salvar o álbum.');
+				redirect('admin/albuns');
+			}
+		}
+	}
+
+	public function delete($id = null)
+	{
+
+		if($id == null){
+			$this->session->set_flashdata('msg_system', 'Album inexistente.');
+			redirect('admin/albuns');
+		}
+
+		$this->load->model(array('album', 'foto'));
+		$this->foto->delete_by_album($id);
+		$query = $this->album->get_by_id($id)->row();
+		$this->album->remove_media('capas/' . $query->capa);
+
+		if($this->album->delete($id)){
+			$this->session->set_flashdata('msg_system', 'Album excluído com sucesso.');
+			redirect('admin/albuns');
+		} else {
+			$this->session->set_flashdata('msg_system', 'Erro ao excluir o album.');
+			redirect('admin/albuns');
+		}
+	}
+}

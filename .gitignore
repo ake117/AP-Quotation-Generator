@@ -1,0 +1,13 @@
+# Environment & Keys
+.cache/
+.gnupg/
+code/.cache/
+code/.gnupg/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log

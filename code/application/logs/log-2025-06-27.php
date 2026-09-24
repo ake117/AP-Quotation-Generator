@@ -1,0 +1,35 @@
+<?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
+
+ERROR - 2025-06-27 05:42:39 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 05:59:53 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 05:59:55 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 08:16:44 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 08:16:46 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 09:54:21 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 09:54:24 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 10:30:38 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 10:30:39 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 10:39:39 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 10:39:42 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 11:05:52 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 11:05:54 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 12:25:16 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 12:25:17 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 14:54:20 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 14:54:20 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 16:33:23 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 16:33:23 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 17:42:01 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 17:44:57 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 17:44:58 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 18:11:27 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 18:11:28 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 18:18:08 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 18:18:09 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 18:38:05 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 18:38:06 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 19:38:48 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 19:38:49 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 20:17:05 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 20:17:06 --> 404 Page Not Found: /index
+ERROR - 2025-06-27 21:27:22 --> 404 Page Not Found: ../modules/admin/controllers//index

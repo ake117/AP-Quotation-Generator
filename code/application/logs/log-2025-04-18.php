@@ -1,0 +1,32 @@
+<?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
+
+ERROR - 2025-04-18 07:29:05 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:22 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:23 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:23 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:24 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:24 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:24 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:24 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:25 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:25 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:25 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:25 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:26 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:26 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:26 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:26 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:27 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:27 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:53 --> 404 Page Not Found: ../modules/admin/controllers//index
+ERROR - 2025-04-18 07:29:54 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:54 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:29:54 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 07:30:29 --> 404 Page Not Found: Api/.env.back
+ERROR - 2025-04-18 07:30:30 --> 404 Page Not Found: Api/.env.example
+ERROR - 2025-04-18 07:30:30 --> 404 Page Not Found: Api/.env.sample
+ERROR - 2025-04-18 07:30:30 --> 404 Page Not Found: Api/.env.save
+ERROR - 2025-04-18 08:00:48 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 22:24:13 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 22:24:18 --> 404 Page Not Found: /index
+ERROR - 2025-04-18 23:20:55 --> 404 Page Not Found: /index

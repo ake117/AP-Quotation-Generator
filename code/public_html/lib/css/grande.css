@@ -1,0 +1,23 @@
+.login-page,
+.register-page {
+  background: #ecf0f5 !important;
+}
+
+.box-tools.pull-right .glyphicon.glyphicon-plus-sign{
+    margin-right: 0.5rem !important;
+}
+
+.lbl_file{
+    margin-top: 5px;
+}
+
+.alter_file{
+    margin-top:5px;margin-left: 15px;
+}
+
+.input_file{
+    margin-top:10px;
+}
+.logo_project{
+    max-height: 150px;
+}

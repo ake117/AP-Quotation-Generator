@@ -1,0 +1,41 @@
+16-05-2019 05:44:53   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 05:46:07   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 05:46:36   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 05:47:21   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 05:47:37   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 05:51:32   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 05:52:24   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 05:53:17   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 05:54:40   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 05:55:23   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 05:55:46   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 06:39:14   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 06:40:02   | successcode: 0 | PayRef: PayRefPayRef | Ref: 7fed2c04a0eeb0d0619ab2deb93b8693  
+16-05-2019 06:40:45   | successcode: 0 | PayRef: PayRefPayRef | Ref: 0a3d9f3dc8c8b1ead0256bb85a6ec7c2  
+16-05-2019 06:45:57   | successcode: 0 | PayRef: PayRefPayRef | Ref: 0a3d9f3dc8c8b1ead0256bb85a6ec7c2  
+16-05-2019 06:47:33   | successcode: 0 | PayRef: PayRefPayRef | Ref: 0a3d9f3dc8c8b1ead0256bb85a6ec7c2  
+16-05-2019 06:47:37   | successcode: 0 | PayRef: PayRefPayRef | Ref: 0a3d9f3dc8c8b1ead0256bb85a6ec7c2  
+16-05-2019 06:48:05   | successcode: 0 | PayRef: PayRefPayRef | Ref: 0a3d9f3dc8c8b1ead0256bb85a6ec7c2  
+16-05-2019 06:51:55   | successcode: 0 | PayRef: PayRefPayRef | Ref: 0a3d9f3dc8c8b1ead0256bb85a6ec7c2  
+16-05-2019 06:53:13   | successcode: 0 | PayRef: PayRefPayRef | Ref: 0a3d9f3dc8c8b1ead0256bb85a6ec7c2  
+16-05-2019 06:58:56   | successcode: 0 | PayRef: PayRefPayRef | Ref: 0a3d9f3dc8c8b1ead0256bb85a6ec7c2  
+04-06-2019 10:37:58 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00"} 
+04-06-2019 10:39:05 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:42:16 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:42:48 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:43:00 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:43:53 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:44:16 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:44:34 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:45:01 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:45:48 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:47:05 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:47:17 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:47:44 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:47:53 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:51:55 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:52:55 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:56:17 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:57:26 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:57:40 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 
+04-06-2019 10:58:06 | {"successcode":"0","PayRef":"PayRefPayRef","Ref":"ce714c6c18d958f62615f4ece0108e00","TxTime":"2019-05-13 04:56:33"} 

@@ -1,0 +1,32 @@
+<?php defined('BASEPATH') OR exit('No direct script access allowed'); ?>
+
+ERROR - 2026-06-03 11:21:35 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 11:21:36 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 11:21:36 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 11:21:37 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 11:21:38 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 11:21:38 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 11:21:38 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 11:21:39 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:13:57 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:13:58 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:00 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:00 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:00 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:01 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:01 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:01 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:01 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:02 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:02 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:02 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:02 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:03 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:03 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 12:14:03 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 16:48:05 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 16:48:05 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 16:48:06 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 16:48:07 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 16:48:08 --> 404 Page Not Found: /index
+ERROR - 2026-06-03 16:48:09 --> 404 Page Not Found: /index

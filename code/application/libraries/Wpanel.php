@@ -1,0 +1,340 @@
+<?php
+
+
+defined('BASEPATH') OR exit('No direct script access allowed');
+
+/**
+ * Wpanel Library Class
+ *
+ * This class maintain the methods widely used in WpanelCms.
+ *
+ * @package     WpanelCms
+ * @subpackage  Libraries
+ * @category    Libraries
+ * @author      Eliel de Paula <dev@elieldepaula.com.br>
+ * @link        https://wpanelcms.com.br
+ * @version     0.0.1
+ */
+class Wpanel
+{
+
+    /**
+     * Config itens from config.json.
+     *
+     * @var $wpanel_config mixed
+     */
+    protected $wpanel_config;
+
+    /**
+     * Description for meta tags.
+     *
+     * @var $meta_description String
+     */
+    protected $meta_description = '';
+
+    /**
+     * Image for meta tags.
+     *
+     * @var $meta_image string
+     */
+    protected $meta_image = '';
+
+    /**
+     * Key words for meta tags
+     *
+     * @var $meta_keywords string
+     */
+    protected $meta_keywords = '';
+
+    /**
+     * Title for meta tags.
+     *
+     * @var $meta_title string
+     */
+    protected $meta_title = '';
+
+    /**
+     * Class constructor.
+     *
+     * @return void
+     */
+    public function __construct($config = array())
+    {
+        if (count($config) > 0)
+            $this->initialize($config);
+        try {
+
+        } catch (Exception $e) {
+            // echo $e->getMessage();
+        }
+        log_message('debug', "Wpanel Class Initialized");
+    }
+
+    /**
+     * Get the instance of CI.
+     *
+     * @return mixed
+     */
+    public function __get($var)
+    {
+        return get_instance()->$var;
+    }
+
+    /**
+     * ---------------------------------------------------------------------------------------------
+     * Este método preenche uma lista de atributos passados
+     * em forma de array em um elemento HTML
+     *
+     * @return mixed
+     * @author Eliel de Paula <dev@elieldepaula.com.br>
+     * ---------------------------------------------------------------------------------------------
+     */
+    private function _attributes($attributes)
+    {
+        if (is_array($attributes)) {
+            $atr = '';
+            foreach ($attributes as $key => $value) {
+                $atr .= $key . "=\"" . $value . "\" ";
+            }
+            return $atr;
+        } elseif (is_string($attributes) and strlen($attributes) > 0)
+            $atr = ' ' . $attributes;
+
+    }
+
+    /**
+     * Initialize the library loading the configuration files or
+     * an array() passed on load of the class.
+     *
+     * @param $config array()
+     * @return void
+     */
+    public function initialize($config = array())
+    {
+        foreach ($config as $key => $val) {
+            if (isset($this->$key)) {
+                $method = 'set_' . $key;
+                if (method_exists($this, $method))
+                    $this->$method($val);
+                else
+                    $this->$key = $val;
+
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Check the first admin user.
+     *
+     * @return mixed
+     */
+    public function check_setup()
+	{
+		$this->load->model('auth_model');
+		if ($this->auth->accounts_empty() == TRUE)
+			redirect('setup');
+	}
+
+    // ----- Encapsulation for meta tags | begin. ----- //
+    public function set_meta_description($value)
+    {
+        $this->meta_description = $value;
+    }
+
+    public function get_meta_description()
+    {
+        return $this->meta_description;
+    }
+
+    public function set_meta_image($value)
+    {
+        $this->meta_image = $value;
+    }
+
+    public function get_meta_image()
+    {
+        return $this->meta_image;
+    }
+
+    public function set_meta_keywords($value)
+    {
+        $this->meta_keywords = $value;
+    }
+
+    public function get_meta_keywords()
+    {
+        return $this->meta_keywords;
+    }
+
+    public function set_meta_title($value)
+    {
+        $this->meta_title = $value .' | '. $this->get_config('site_title');
+    }
+
+    public function get_meta_title()
+    {
+        return $this->meta_title;
+    }
+    // ----- Encapsulation for meta tags | end. ----- //
+
+    /* ----- Methods for the Website. ----- */
+
+    /**
+     * Return a full meta-tag to be inserted into the <head> of the site.
+     *
+     * @return mixed
+     */
+    public function get_meta()
+    {
+        // Recupera a variável 'Locale'.
+        $available_languages = config_item('available_languages');
+        $locale = $available_languages[$this->get_config('language')]['locale'];
+        // Trata a variável 'Description'.
+        if (!$this->meta_description)
+            $this->meta_description = $this->get_config('site_desc');
+        // Trata a imagem de exibição.
+        if(!$this->meta_image)
+            $this->meta_image = base_url('media/'.$this->get_config('logomarca'));
+        $meta = array(
+            array('name' => 'Content-type', 'content' => 'text/html; charset=' . config_item('charset'), 'type' => 'equiv'),
+            array('name' => 'robots', 'content' => 'all'),
+            array('name' => 'author', 'content' => $this->get_config('author')),
+            array('name' => 'canonical', 'content' => current_url()),
+            array('name' => 'title', 'content' => $this->meta_title),
+            array('name' => 'description', 'content' => $this->meta_description),
+            array('name' => 'keywords', 'content' => $this->get_config('site_tags') . ', ' . $this->meta_keywords),
+            // continua...
+            //TODO Adicionar meta para o twitter e outras redes sociais.
+            array('name' => 'og:locale', 'content' => $locale),
+            array('name' => 'og:type', 'content' => 'article'),
+            array('name' => 'og:image', 'content' => $this->meta_image),
+            array('name' => 'og:title', 'content' => $this->meta_title),
+            array('name' => 'og:description', 'content' => $this->meta_description),
+            array('name' => 'og:url', 'content' => current_url()),
+            array('name' => 'og:site_name', 'content' => $this->get_config('site_title')),
+        );
+        return meta($meta);
+    }
+
+    /**
+     * Return a key value from the config.json file, or all the object if $item = null.
+     *
+     * @param $item String
+     * @return mixed
+     */
+    public function get_config($item = null)
+    {
+        $this->load->model('configuracao');
+        return $this->configuracao->get_config($item);
+    }
+
+    /**
+     * Return the code needed to load the configured editor.
+     *
+     * @return string
+     * @todo Revisar este código de 'invocaçao' do editor.
+     * @todo Adicionar o filemanager no tinyMCE.
+     */
+    public function load_editor()
+    {
+        $html = '';
+        switch (wpn_config('text_editor')) {
+            case 'ckeditor':
+                $html .= "\n\n<script type=\"text/javascript\" src=\"" . base_url('lib/plugins/ckeditor/ckeditor.js') . "\"></script>\n";
+                return $html;
+                break;
+            case 'tinymce':
+                $html .= '<script src="' . base_url('lib/plugins/tinymce/tinymce.min.js') . '"></script>';
+                $html .= '<script>tinymce.init({selector:\'textarea#editor\',';
+                $html .= '        plugins: [';
+                $html .= '            "advlist autolink lists link image charmap print preview anchor",';
+                $html .= '            "searchreplace visualblocks code fullscreen",';
+                $html .= '            "insertdatetime media table contextmenu paste"';
+                $html .= '        ],';
+                $html .= '        menubar: false,';
+                $html .= '        toolbar: " bold italic | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link image"';
+                $html .= '});</script>';
+                return $html;
+                break;
+            default:
+                return false;
+                break;
+        }
+    }
+
+    /**
+     * Load the group of views to the control panel.
+     *
+     * @param string $view
+     * @param array $dados
+     * @return mixed
+     */
+    public function load_view($view, $dados = null)
+    {
+        //$this->load->view('layout/header');
+        //var_dump($this->smarty);die();
+        $this->smarty->view_admin( 'header.tpl');
+        $this->load->view($view, $dados);
+        $this->smarty->view_admin( 'footer.tpl');
+        //$this->load->view('layout/footer');
+    }
+
+    /**
+     * Send an email from the website.
+     *
+     * Example of array:
+     *
+     *    array(
+     *        'html' => 'true/false',
+     *        'from_name' => '',
+     *        'from_email' => '',
+     *        'to' => '',
+     *        'subject' => '',
+     *        'message' => '',
+     *    )
+     *
+     * @param array $data
+     * @return bool
+     */
+    public function send_email($data = NULL)
+    {
+        if($data == NULL)
+            return FALSE;
+        // Load the library.
+        $this->load->library('email');
+        // Check if use SMTP.
+        if(wpn_config("use_smtp")){
+            $config['smtp_host'] = wpn_config("smtp_host");
+            $config['smtp_user'] = wpn_config("smtp_user");
+            $config['smtp_pass'] = wpn_config("smtp_password");
+            $config['smtp_port'] = wpn_config("smtp_port");
+            $config['smtp_crypto'] = wpn_config("smtp_ssl");
+            $config['mailtype'] = $data['html'] ? 'html' : 'text';
+            $config['validate'] = TRUE;
+            $config['protocol'] = 'sendmail';
+            $config['mailpath'] = '/usr/sbin/sendmail';
+            $config['charset'] = 'utf-8';
+            $config['wordwrap'] = TRUE;
+
+            $this->email->initialize($config);
+            $this->email->from(wpn_config('smtp_user'), wpn_config('site_title'));
+        } else {
+            $this->email->from($data['from_email'], wpn_config('site_title'));
+        }
+
+        // Send the message.
+        $this->email->to($data['to']);
+        $this->email->subject($data['subject']);
+        $this->email->message($data['message']);
+
+        // Verify the succes of the send.
+        if ($this->email->send()) {
+            log_message('debug', $this->email->print_debugger() . " Success");
+            return TRUE;
+        } else {
+            log_message('debug', $this->email->print_debugger() . " Error");
+            return FALSE;
+        }
+    }
+}
