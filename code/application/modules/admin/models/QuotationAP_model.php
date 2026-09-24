@@ -188,4 +188,24 @@ SQL;
     
     
 
+
+    /**
+     * Update the contact name shown on the exported quotation (cell E10).
+     */
+    function update_contact_name($quotation_no, $contact_name)
+    {
+        $this->db->where('quotation_no', $quotation_no);
+        $this->db->update('quotation_ap_data', array('contact_name' => $contact_name));
+        return $this->db->affected_rows();
+    }
+
+    /**
+     * Get one quotation row (by quotation_no).
+     */
+    function get_by_quotation_no($quotation_no)
+    {
+        $this->db->where('quotation_no', $quotation_no);
+        $query = $this->db->get('quotation_ap_data');
+        return ($query->num_rows() > 0) ? $query->row_array() : false;
+    }
 }

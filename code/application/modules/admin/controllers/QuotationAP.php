@@ -269,6 +269,45 @@ class QuotationAP extends MX_Controller
     }
     
     
+    /**
+     * Change the contact name (cell E10) for one quotation.
+     * GET  /admin/quotationAP/edit_contact?quotation_no=2026/1529
+     * POST /admin/quotationAP/edit_contact  (quotation_no, contact_name)
+     */
+    public function edit_contact()
+    {
+        $quotation_no = $this->input->post('quotation_no', TRUE);
+
+        if ($quotation_no === null || $quotation_no === '') {
+            $quotation_no = $this->input->get('quotation_no', TRUE);
+        }
+
+        if ($quotation_no === null || $quotation_no === '') {
+            echo json_encode(array('status' => 'error', 'message' => 'quotation_no required'));
+            return;
+        }
+
+        // POST: save the new contact name
+        $contact_name = $this->input->post('contact_name', TRUE);
+        if ($contact_name !== null) {
+            $this->quotation->update_contact_name($quotation_no, $contact_name);
+            echo json_encode(array(
+                'status'       => 'success',
+                'quotation_no' => $quotation_no,
+                'contact_name' => $contact_name
+            ));
+            return;
+        }
+
+        // GET: return current value
+        $row = $this->quotation->get_by_quotation_no($quotation_no);
+        echo json_encode(array(
+            'status'       => 'success',
+            'quotation_no' => $quotation_no,
+            'contact_name' => ($row !== false && !empty($row['contact_name'])) ? $row['contact_name'] : ' คุณสุวิมล ศีลพิพัฒน์ '
+        ));
+    }
+
     public function get_quotationAP_running() {
         $inpt_quotation_date = $this->input->post('quotation_date');
         $inpt_quotation_date = date_create($inpt_quotation_date);
@@ -343,6 +382,7 @@ class QuotationAP extends MX_Controller
 
                 $objPHPExcel->setActiveSheetIndex(0)->setCellValue('K12', $quotation_no);
                 $objPHPExcel->setActiveSheetIndex(0)->setCellValue('K14', $job_no);
+                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E10', $value["contact_name"]);
                 $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E11', $company_title);
                 $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E12', $company_address);
 

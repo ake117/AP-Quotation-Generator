@@ -113,6 +113,38 @@
                 </div>
             </div>   
         </div>    
+
+        <!-- Contact name editor -->
+        <div class="box box-default" id="contact_box">
+            <div class="box-header with-border">
+                <h3 class="box-title">Contact Name (แก้ชื่อผู้ติดต่อในใบเสนอราคา)</h3>
+            </div>
+            <div class="box-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label for="contact_quo_no">Quo. No.</label>
+                            <input type="text" id="contact_quo_no" class="form-control" placeholder="2026/1529">
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label for="contact_name_input">Contact Name</label>
+                            <input type="text" id="contact_name_input" class="form-control" placeholder="กดปุ่ม Load ก่อน">
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>&nbsp;</label><br>
+                            <button type="button" class="btn btn-info" id="contact_load">Load</button>
+                            <button type="button" class="btn btn-primary" id="contact_save">Save</button>
+                            <span id="contact_status" style="margin-left:8px;"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="box-body" style="display:none">
             <table id="grid" class="table table-bordered table-striped">
                     <thead>
@@ -449,4 +481,37 @@ table.dataTable th {
         
     } );
 </script>
+<script>
+    var editContactUrl = '{site_url url="admin/quotationAP/edit_contact"}';
+    {literal}
+    // ---- Contact name editor ----
+    $("#contact_load").click(function(){
+        var qno = $("#contact_quo_no").val();
+        if (!qno) { $("#contact_status").text("กรุณากรอก Quo. No.").css("color","red"); return; }
+        $.getJSON(editContactUrl, {quotation_no: qno})
+         .done(function(data){
+             if (data.status === 'success') {
+                 $("#contact_name_input").val($.trim(data.contact_name));
+                 $("#contact_status").text("").css("color","");
+             } else {
+                 $("#contact_status").text("load error").css("color","red");
+             }
+         });
+    });
+    $("#contact_save").click(function(){
+        var qno = $("#contact_quo_no").val();
+        var cname = $("#contact_name_input").val();
+        if (!qno) { $("#contact_status").text("กรุณากรอก Quo. No.").css("color","red"); return; }
+        $.post(editContactUrl,
+               {quotation_no: qno, contact_name: cname},
+               function(data){
+                   if (data.status === 'success') {
+                       $("#contact_status").text("บันทึกแล้ว").css("color","green");
+                   } else {
+                       $("#contact_status").text("save error").css("color","red");
+                   }
+               }, 'json');
+    });
+    {/literal}
+    </script>
 {include file="footer.tpl"}
