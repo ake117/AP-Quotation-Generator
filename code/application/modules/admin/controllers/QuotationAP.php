@@ -147,8 +147,8 @@ class QuotationAP extends MX_Controller
                 case 'file_quotation_data':
                     $resTime = $this->quotation->update_quotationAP_doc('data',$file_quotation["message"]);
                     
-                    $versionExcel = "Excel2007";
-                    $extFile = $versionExcel == 'Excel2007' ? ".xlsx" : ".xls";
+                    $versionExcel = "Xlsx"; // .xlsx only
+                    $extFile = ".xlsx";
 
                     $saveFileName="Mediaplan";
                     $saveFileNameFull = $saveFileName.$extFile;
@@ -400,8 +400,8 @@ class QuotationAP extends MX_Controller
 
                 //Save as an Excel BIFF (xls) file
 
-                $versionExcel = "Excel2007";
-                $extFile = $versionExcel == 'Excel2007' ? ".xlsx" : ".xls";
+                $versionExcel = "Xlsx"; // .xlsx only
+                $extFile = ".xlsx";
                 
                 $saveFileName = $quotation_no."_".$file_project;                
                 $saveFileName = $this->sanitize_text($saveFileName,'-');                
@@ -499,12 +499,21 @@ class QuotationAP extends MX_Controller
         }
                         
         $config['upload_path'] = $upload_path;
-        $config['allowed_types'] = 'xls|xlsx';
+        $config['allowed_types'] = 'xlsx'; // .xlsx only
         
         //$filename = (!empty($name))?$name:$uploadFile; 
         //$config['file_name'] = date('Ymdhis')."_".$filename;
         
         $filename = $_FILES[$uploadFile]['name'];
+
+        // Only .xlsx is supported
+        if (strtolower(substr($filename, -5)) !== '.xlsx') {
+            return array(
+                'status'  => 'error',
+                'message' => 'Unsupported file type: please upload .xlsx files only (Excel 2007+). Filename: ' . htmlspecialchars($filename)
+            );
+        }
+
         $config['file_name'] = $filename;
                                 
         $this->load->library('upload', $config);
