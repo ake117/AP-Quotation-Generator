@@ -30,10 +30,10 @@ class QuotationAP extends MX_Controller
         
         $highestColumn = $worksheet->getHighestColumn();
         $highestColumnIndex = PHPExcel_Cell::columnIndexFromString($highestColumn);               
-        for($col=0; $col<=$highestColumnIndex; $col++) {            
-            $colname = strtoupper(trim($worksheet->getCellByColumnAndRow($col, 1)->getValue()));  
+        for($col=1; $col<=$highestColumnIndex; $col++) {            
+            $colname = strtoupper(trim(($worksheet->getCell([$col, 1])->getValue()) ?? ''));   
             if (array_key_exists($colname, $coldata['field'])) {
-                $coldata['pos'][$colname] = $col;
+                $coldata['pos'][$colname] = $col-1;
             }         
         }
 
@@ -96,7 +96,7 @@ class QuotationAP extends MX_Controller
                             $firstcol = '';
                             foreach ($coldata['pos'] as $colname => $colposition) {
                                 if ($firstcol=='') { $firstcol=$coldata['field'][$colname]; }
-                                $datarow[$coldata['field'][$colname]] = trim($worksheet->getCellByColumnAndRow($colposition, $row)->getValue());
+                                $datarow[$coldata['field'][$colname]] = trim(($worksheet->getCell([$colposition+1, $row])->getValue()) ?? '');
                             }
                             
                             if ($uploadFile == 'file_quotation_data') {
@@ -104,7 +104,7 @@ class QuotationAP extends MX_Controller
                                 $quotation_year = date_format($inpt_quotation_date,"Y");
                                 $quotation_no = $quotation_year."/".str_pad($quotation_running, 4, '0', STR_PAD_LEFT);;                                        
                                 $datarow['quotation_no'] = $quotation_no;
-                                $objPHPExcel->setActiveSheetIndex($i)->setCellValueByColumnAndRow($coldata['pos']['QT NO.'],$row, $quotation_no);
+                                $objPHPExcel->setActiveSheetIndex($i)->getCell([$coldata['pos']['QT NO.']+1, $row])->setValue($quotation_no);
                             }
 
                             if ($datarow[$firstcol] == '') { break; }

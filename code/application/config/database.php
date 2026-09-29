@@ -77,7 +77,7 @@ $query_builder = TRUE;
  */
 $db['development'] = array(
         'dsn'	=> '',
-	'hostname' => 'localhost',
+	'hostname' => getenv('DB_HOST') ?: 'localhost',
 	'username' => 'productionmy',
 	'password' => 'eedMhuW34X4HsMYU6k7L',
 	'database' => 'production',
@@ -102,7 +102,7 @@ $db['development'] = array(
  */
 $db['production'] = array(
 	'dsn'	=> '',
-	'hostname' => 'localhost',
+	'hostname' => getenv('DB_HOST') ?: 'localhost',
 	'username' => 'productionmy',
 	'password' => 'eedMhuW34X4HsMYU6k7L',
 	'database' => 'production',
