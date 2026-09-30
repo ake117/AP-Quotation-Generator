@@ -23,6 +23,8 @@ class QuotationAP extends MX_Controller
     }
            
     function excel_search_col($worksheet, $coldata) {     
+        // Columns that may be absent in older media plans (optional, filled with NULL)
+        $optional = array('PURE MEDIA', 'BG', 'PERIOD');
         
         foreach ($coldata['field'] as $key => $value) {
             $coldata['pos'][$key] = 999;    
@@ -35,6 +37,14 @@ class QuotationAP extends MX_Controller
             if (array_key_exists($colname, $coldata['field'])) {
                 $coldata['pos'][$colname] = $col;
             }         
+        }
+
+        // Optional columns: drop them from the mapping when not found
+        foreach ($coldata['pos'] as $key => $pos) {
+            if ($pos === 999 && in_array($key, $optional)) {
+                unset($coldata['pos'][$key]);
+                unset($coldata['field'][$key]);
+            }
         }
 
         if (array_search(999, $coldata['pos']) == false) {
@@ -96,7 +106,14 @@ class QuotationAP extends MX_Controller
                             $firstcol = '';
                             foreach ($coldata['pos'] as $colname => $colposition) {
                                 if ($firstcol=='') { $firstcol=$coldata['field'][$colname]; }
-                                $datarow[$coldata['field'][$colname]] = trim($worksheet->getCellByColumnAndRow($colposition, $row)->getValue());
+                                $cell = $worksheet->getCellByColumnAndRow($colposition, $row);
+                                // Formula cells (e.g. Pure Media) -> use the calculated value
+                                if ($cell->isFormula()) {
+                                    $val = $cell->getCalculatedValue();
+                                } else {
+                                    $val = $cell->getValue();
+                                }
+                                $datarow[$coldata['field'][$colname]] = trim($val);
                             }
                             
                             if ($uploadFile == 'file_quotation_data') {
@@ -225,7 +242,16 @@ class QuotationAP extends MX_Controller
         }
         
         $coldata['table']   = "quotation_ap_data";
-        $coldata['field']   = array('PROJECT'=> 'project', 'BRIEFNAME'=>'project_file','QT NO.'=>'quotation_no', 'AD FORMAT'=> 'ad_format', 'BUDGET ALL'=> 'budget_all');        
+        $coldata['field']   = array(
+            'PROJECT'       => 'project',
+            'BRIEFNAME'     => 'project_file',
+            'QT NO.'        => 'quotation_no',
+            'AD FORMAT'     => 'ad_format',
+            'BUDGET ALL'    => 'budget_all',
+            'PURE MEDIA'    => 'media_cost',
+            'BG'            => 'bg_key',
+            'PERIOD'        => 'period_text'
+        );        
         $result = $this->import_quotationAP('file_quotation_data', $filepath, $media_plan_worksheet, $coldata, $starttime, $result, $inpt_quotation_date, $quotation_running);
         
         if ($result["status"]=='error') {
@@ -371,7 +397,8 @@ class QuotationAP extends MX_Controller
                 $detail = "Media Cost (".date_format($quotation_date,"F Y").")";
                 $detail_project = $value["project"];
                 $file_project = $value["project_file"];
-                $detail_sub = $value["ad_format"];
+                $period_text = isset($value["period_text"]) ? trim($value["period_text"]) : '';
+                $detail_sub = ($period_text !== '') ? 'Boost post ' . $period_text : 'Boost post ' . trim($value["ad_format"]);
                 $budget = (float) $value["budget"];
                 $budget_all = (float) $value["budget_all"];
                                 
@@ -388,13 +415,28 @@ class QuotationAP extends MX_Controller
 
                 $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E22', $detail);
                 $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E23', $detail_project);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E24', $detail_sub);                      
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('K24', $budget);
-                
+                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E24', $detail_sub);
+
+                // Pure media from media plan (K24) + Agency Fee 11.5% block + BAHTTEXT formula
+                $media_cost = (float) $value["media_cost"];
+                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('K24', ($media_cost > 0) ? $media_cost : $budget);
+
+                $feeFont = array(
+                    'font' => array(
+                        'name'   => 'CordiaUPC',
+                        'size'   => 14,
+                        'color'  => array('rgb' => '000000'),
+                        'italic' => false
+                    )
+                );
+                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('J47', ' Agency Fee 11.5%');
+                $objPHPExcel->setActiveSheetIndex(0)->getStyle('J47')->applyFromArray($feeFont);
+                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('L47', '=L46*11.5/100');
+                $objPHPExcel->setActiveSheetIndex(0)->getStyle('L47')->applyFromArray($feeFont);
+                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('L48', '=L46*(1+11.5/100)');
+
                 //$objPHPExcel->setActiveSheetIndex(0)->setCellValue('L50', $budget_all);
-                 ;
-                 
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('D50', baht_text($budget_all) ); 
+                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('D50', '=_xlfn.BAHTTEXT(L50)');
                 
                 //$objPHPExcel->setActiveSheetIndex(0)->setCellValue('D50', '=BAHTTEXT(1999)');
 
@@ -408,6 +450,9 @@ class QuotationAP extends MX_Controller
                 $saveFileNameFull = $saveFileName.$extFile;                
                 $pathSaveFile1 = $filepath.$saveFileNameFull;
                 
+                // Insert standard images (header logo, stamp, signatures) — mirrors APQT 2_image_change_2025.py
+                $this->insert_quotation_images($objPHPExcel);
+
                 $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel,$versionExcel);
                 
                 $objWriter->setPreCalculateFormulas(true);
@@ -442,6 +487,43 @@ class QuotationAP extends MX_Controller
 
         $pdf = substr($xlsx_path, 0, -5) . '.pdf';
         return ($exitCode === 0 && file_exists($pdf));
+    }
+
+    /**
+     * Insert the 4 standard images into the quotation sheet
+     * (same assets & placement as APQT 2_image_change_2025.py).
+     */
+    function insert_quotation_images($objPHPExcel)
+    {
+        $imgPath = realpath(dirname(__FILE__).'/../../../..').'/public_html/upload/quotation/ap/img/';
+        if (!is_dir($imgPath)) {
+            return;
+        }
+
+        $sheet = $objPHPExcel->getActiveSheet();
+
+        // Wipe any existing images in the template
+        $sheet->getDrawingCollection()->exchangeArray(array());
+
+        $images = array(
+            array('file' => 'ewit_resizeto_075x110in-and_140x100in.png', 'width' => 71.25, 'height' => 104.5, 'anchor' => 'A2'),
+            array('file' => 'signature_or_resizeto_126x070in.png',       'width' => 113.4, 'height' => 63.0,  'anchor' => 'G55'),
+            array('file' => 'ewit_logo-stamp_2025v2_075x116in.png',      'width' => 75.0,  'height' => 116.4, 'anchor' => 'I53'),
+            array('file' => 'signature_ake_resizeto_137x079in.png',      'width' => 123.3, 'height' => 71.1,  'anchor' => 'K55'),
+        );
+
+        foreach ($images as $img) {
+            $file = $imgPath.$img['file'];
+            if (!file_exists($file)) continue;
+
+            $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
+            $drawing->setName(pathinfo($file, PATHINFO_FILENAME));
+            $drawing->setPath($file);
+            $drawing->setHeight($img['height']);
+            $drawing->setWidth($img['width']);
+            $drawing->setCoordinates($img['anchor']);
+            $drawing->setWorksheet($sheet);
+        }
     }
 
     /**
