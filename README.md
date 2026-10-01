@@ -21,7 +21,7 @@
 
 ```
 URL      : http://127.0.0.1:8091/admin/login
-Email    : ake@ewitewit.com   (ROOT)  หรือ akekapon@ewitewit.com (ROOT)
+Email    : ake@ewitewit.com   (ROOT) 
 Password : APqt2026!local
 ```
 
