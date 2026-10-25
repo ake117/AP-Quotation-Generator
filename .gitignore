@@ -18,3 +18,8 @@ code/application/cache/
 code/application/views/_layout/templates_c/
 backups/
 exported_*/
+
+# Reference outputs from the original system are kept on purpose (golden samples
+# for the PDF gate). The generic rule above ignores the rest.
+!exported_from original system_20260925/
+!exported_from original system_20260925/**
