@@ -80,8 +80,10 @@ class QuotationExporter
             ? 'Boost post ' . $period_text
             : 'Boost post ' . trim($row['ad_format']);
 
-        $budget = (float) $row['budget'];
-        $media_cost = (float) $row['media_cost'];
+        // The 11.5% agency fee is part of the media plan's own arithmetic
+        // (BUDGET ALL -> BUDGET EX VAT -> PURE MEDIA), so it is on unless a row says
+        // otherwise. A row that carries PURE MEDIA already has the fee removed.
+        $agencyFee = array_key_exists('agency_fee', $row) ? (bool) $row['agency_fee'] : true;
 
         $spreadsheet = IOFactory::load($this->templatePath);
         $sheet = $spreadsheet->getActiveSheet();
@@ -99,8 +101,12 @@ class QuotationExporter
         $sheet->setCellValue('E23', $row['project']);
         $sheet->setCellValue('E24', $detail_sub);
 
-        // Pure media from the media plan (K24) + Agency Fee 11.5% block + BAHTTEXT
-        $sheet->setCellValue('K24', ($media_cost > 0) ? $media_cost : $budget);
+        // K24 carries PURE MEDIA — the net-of-everything media cost. The media plan
+        // computes it so the chain lands on the round budget the client approved:
+        //   Budget All -> /1.07 = Budget Ex VAT -> /1.115 = Pure media (N column)
+        // then  Pure media + 11.5% fee + 7% VAT  =  Budget All  (a round number)
+        $pureMedia = self::pureMedia($row, $agencyFee);
+        $sheet->setCellValue('K24', $pureMedia);
 
         $feeFont = array(
             'font' => array(
@@ -110,17 +116,15 @@ class QuotationExporter
                 'italic' => false,
             ),
         );
-        // The 11.5% agency fee is a product decision, not a constant: every reference
-        // quotation in exported_from original system_20260925 has no fee line and
-        // L48 = L46. The flag makes both cases expressible; the default keeps the
-        // behaviour the controller had before the extraction.
-        $agencyFee = array_key_exists('agency_fee', $row) ? (bool) $row['agency_fee'] : true;
         if ($agencyFee) {
             $sheet->setCellValue('J47', ' Agency Fee 11.5%');
             $sheet->getStyle('J47')->applyFromArray($feeFont);
-            $sheet->setCellValue('L47', '=L46*11.5/100');
+            // The fee is rounded to satang before it is added: otherwise the net
+            // carries 9,345.78505 and the printed lines (9,345.79 + 654.21) do not
+            // add up to the printed total.
+            $sheet->setCellValue('L47', '=ROUND(L46*11.5/100,2)');
             $sheet->getStyle('L47')->applyFromArray($feeFont);
-            $sheet->setCellValue('L48', '=L46*(1+11.5/100)');
+            $sheet->setCellValue('L48', '=L46+L47');
         } else {
             $sheet->setCellValue('J47', null);
             $sheet->setCellValue('L47', null);
@@ -176,6 +180,53 @@ class QuotationExporter
             $drawing->setCoordinates($img['anchor']);
             $drawing->setWorksheet($sheet);
         }
+    }
+
+    /**
+     * The amount that belongs in K24.
+     *
+     * PURE MEDIA comes from the media plan (column N). When a row does not carry it,
+     * derive it from the round budget so the document still totals a clean number:
+     *
+     *   pure = budget_all / (1 + fee/100) / 1.07
+     *
+     * 10,000 with the standard 11.5% fee gives 8,381.87 -> +963.91 fee -> 9,345.79
+     * net -> +654.21 VAT -> 10,000.00.
+     */
+    public static function pureMedia(array $row, bool $agencyFee = true): float
+    {
+        $media = (float) ($row['media_cost'] ?? 0);
+        if ($media > 0) {
+            return round($media, 2);
+        }
+
+        $target = (float) ($row['budget_all'] ?? 0);
+        if ($target <= 0) {
+            $target = (float) ($row['budget'] ?? 0);
+        }
+        if ($target <= 0) {
+            return 0.0;
+        }
+
+        $factor = $agencyFee ? 1.115 : 1.0;
+        $base = $target / (1.07 * $factor);
+
+        // Rounding is not neutral here: 10,000 / 1.19305 = 8,381.8753..., and
+        // rounding up gives a document that totals 10,000.01. Pick the two-decimal
+        // value whose whole chain (net -> VAT -> total) actually lands on the target.
+        foreach (array(0, -0.01, 0.01, -0.02, 0.02, -0.03, 0.03) as $delta) {
+            $candidate = round($base + $delta, 2);
+            // Exactly what the sheet computes: fee rounded to satang, net = pure +
+            // fee, VAT rounded to satang, total = net + VAT.
+            $fee = $agencyFee ? round($candidate * 0.115, 2) : 0.0;
+            $net = round($candidate + $fee, 2);
+            $vat = round($net * 0.07, 2);
+            if (abs($net + $vat - $target) < 0.005) {
+                return $candidate;
+            }
+        }
+
+        return round($base, 2);
     }
 
     /** `<quotation_no>_<project>`, filesystem-safe. */

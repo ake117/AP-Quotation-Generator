@@ -37,9 +37,30 @@ compares it against the document a human approved, which lives in
 When a test disagrees with the reference, **the reference wins** — a difference is a
 finding, never a reason to edit the reference or loosen the assertion.
 
-## Note on the agency fee
+## K24 carries PURE MEDIA, not the budget
 
-Every reference quotation has no agency-fee line and carries `net = subtotal`. The
-exporter supports the 11.5 % block behind a `agency_fee` flag in the row data; the
-default keeps the behaviour the controller had (`true`). Changing the default is a
-product decision, not a test decision.
+The media plan already does the arithmetic — the columns are formulas:
+
+```
+Budget All  --/1.07-->  Budget Ex VAT  --/1.115-->  Pure media   (column N)
+```
+
+so a document can put the media cost back and land on the number the client approved:
+
+```
+Pure media 8,381.87  +  Agency Fee 11.5%   963.92
+= Net 9,345.79       +  VAT 7%             654.21
+= Grand Total                            10,000.00
+```
+
+- K24 takes PURE MEDIA from the row (`media_cost`, mapped from the plan's N column).
+- When the row has none, the exporter derives it from BUDGET ALL and checks that the
+  whole chain closes: 10,000 / 1.19305 = 8,381.8753, and rounding that up gives a
+  document totalling 10,000.01. The derivation picks the satang that closes instead.
+- The fee is rounded before it is added (`=ROUND(L46*11.5/100,2)`, then `=L46+L47`),
+  otherwise the printed lines do not add up to the printed total.
+- `agency_fee => false` in a row turns the block off: the older reference quotations
+  (September 2025 style) have no fee line and carry `net = subtotal`.
+
+`test_the_chain_lands_on_the_round_budget` pins 5,000 / 10,000 / 12,345 / 25,000 /
+100,000 — every one has to come back out as the grand total.

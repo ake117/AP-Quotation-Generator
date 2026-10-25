@@ -85,15 +85,58 @@ final class QuotationExporterTest extends TestCase
         $this->assertEqualsWithDelta(9345.79, (float) $sheet->getCell('K24')->getValue(), 0.001);
     }
 
-    public function test_media_cost_falls_back_to_budget(): void
+    /**
+     * K24 must carry PURE MEDIA (the media plan's N column), not the gross budget:
+     * that is what makes the fee and the VAT add back to the approved round number.
+     */
+    public function test_k24_carries_pure_media_from_the_plan(): void
     {
         $row = $this->referenceRow();
-        $row['media_cost'] = 0;
-        $row['budget'] = 1234.56;
+        $row['media_cost'] = 8381.87;   // PURE MEDIA for a 10,000 budget
+        $row['budget_all'] = 10000;
 
         $sheet = $this->exporter()->fill($row)->getActiveSheet();
 
-        $this->assertEqualsWithDelta(1234.56, (float) $sheet->getCell('K24')->getValue(), 0.001);
+        $this->assertEqualsWithDelta(8381.87, (float) $sheet->getCell('K24')->getValue(), 0.001);
+    }
+
+    public function test_k24_is_derived_from_the_budget_when_pure_media_is_missing(): void
+    {
+        $row = $this->referenceRow();
+        $row['media_cost'] = 0;
+        $row['budget_all'] = 10000;
+        $row['budget'] = 10000;
+        $row['agency_fee'] = true;   // the standard media plan carries the 11.5% fee
+
+        $sheet = $this->exporter()->fill($row)->getActiveSheet();
+
+        // 10,000 / 1.07 / 1.115 = 8,381.87 — the media plan's own PURE MEDIA value
+        $this->assertEqualsWithDelta(8381.87, (float) $sheet->getCell('K24')->getValue(), 0.01);
+    }
+
+    /**
+     * The reason PURE MEDIA is used at all: the customer approved a round budget, and
+     * the document has to add back to it exactly — not to 10,000.01.
+     */
+    public function test_the_chain_lands_on_the_round_budget(): void
+    {
+        foreach (array(5000, 10000, 12345, 25000, 100000) as $target) {
+            $row = $this->referenceRow();
+            $row['media_cost'] = 0;
+            $row['budget_all'] = $target;
+            $row['budget'] = $target;
+            $row['agency_fee'] = true;
+
+            $sheet = $this->exporter()->fill($row)->getActiveSheet();
+            $total = (float) $sheet->getCell('L50')->getCalculatedValue();
+
+            $this->assertEqualsWithDelta(
+                $target,
+                $total,
+                0.01,
+                "a {$target} budget must come back out as the grand total"
+            );
+        }
     }
 
     /**
@@ -123,7 +166,7 @@ final class QuotationExporterTest extends TestCase
         $sheet = $this->exporter()->fill($row)->getActiveSheet();
 
         $this->assertSame(' Agency Fee 11.5%', $sheet->getCell('J47')->getValue());
-        $this->assertSame('=L46*(1+11.5/100)', $sheet->getCell('L48')->getValue());
+        $this->assertSame('=L46+L47', $sheet->getCell('L48')->getValue());
     }
 
     public function test_the_agency_fee_block_is_still_available_when_asked_for(): void
@@ -134,8 +177,8 @@ final class QuotationExporterTest extends TestCase
         $sheet = $this->exporter()->fill($row)->getActiveSheet();
 
         $this->assertSame(' Agency Fee 11.5%', $sheet->getCell('J47')->getValue());
-        $this->assertSame('=L46*11.5/100', $sheet->getCell('L47')->getValue());
-        $this->assertSame('=L46*(1+11.5/100)', $sheet->getCell('L48')->getValue());
+        $this->assertSame('=ROUND(L46*11.5/100,2)', $sheet->getCell('L47')->getValue());
+        $this->assertSame('=L46+L47', $sheet->getCell('L48')->getValue());
     }
 
     /**
@@ -184,6 +227,25 @@ final class QuotationExporterTest extends TestCase
         $text = self::pdfText($files['pdf']);
 
         $this->assertStringContainsString('หนึ่งหมื่นบาทถ้วน', $text);
+    }
+
+    public function test_the_pdf_of_a_fee_bearing_job_totals_the_round_budget(): void
+    {
+        $row = $this->referenceRow();
+        $row['media_cost'] = 0;
+        $row['budget_all'] = 10000;
+        $row['budget'] = 10000;
+        $row['agency_fee'] = true;
+
+        $dir = $this->outDir();
+        $files = $this->exporter()->export($row, $dir);
+        $text = self::pdfText($files['pdf']);
+
+        $this->assertStringContainsString('8,381.87', $text, 'pure media in the line item');
+        $this->assertStringContainsString('963.92', $text, 'agency fee 11.5%');
+        $this->assertStringContainsString('9,345.79', $text, 'net');
+        $this->assertStringContainsString('654.21', $text, 'VAT 7%');
+        $this->assertStringContainsString('10,000.00', $text, 'grand total');
     }
 
     public function test_file_names_are_filesystem_safe(): void
