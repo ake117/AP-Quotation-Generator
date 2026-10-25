@@ -364,108 +364,38 @@ class QuotationAP extends MX_Controller
     
 
     public function export_quotationAP($filepath='')
-    {        
-        
-        $this->load->library('Excel');               
-        $path = realpath(dirname(__FILE__).'/../../../..').'/public_html/upload/quotation/ap/template/template.xlsx';
-        
-                
-        $quotation = $this->quotation->get_data();                        
+    {
+        require_once APPPATH . 'libraries/QuotationExporter.php';
+
+        $root = realpath(dirname(__FILE__).'/../../../..');
+        $template = $root.'/public_html/upload/quotation/ap/template/template.xlsx';
+
+        $quotation = $this->quotation->get_data();
+
         if ($quotation !== false) {
-            
+
             if ($filepath=='') {
-                $filepath = realpath(dirname(__FILE__).'/../../../..').'/public_html/upload/quotation/ap/Quotation/';
+                $filepath = $root.'/public_html/upload/quotation/ap/Quotation/';
             } else {
-                $filepath = realpath(dirname(__FILE__).'/../../../..').'/public_html/upload/'.$filepath.'/';
+                $filepath = $root.'/public_html/upload/'.$filepath.'/';
             }
-            
+
             if (!is_dir($filepath)) {
                 mkdir($filepath, 0777, TRUE);
             }
-            
-            
-            
-            
-            foreach ($quotation as $key => $value) {
-                
-                $quotation_date = date_create($value["quotation_date"]); 
-                $quotation_no = $value["quotation_no"];
-                $job_no = $value["job_no"];
-                $company_title = $value["company_title"];
-                $company_address = $value["company_address"];
-                
-                $detail = "Media Cost (".date_format($quotation_date,"F Y").")";
-                $detail_project = $value["project"];
-                $file_project = $value["project_file"];
-                $period_text = isset($value["period_text"]) ? trim($value["period_text"]) : '';
-                $detail_sub = ($period_text !== '') ? 'Boost post ' . $period_text : 'Boost post ' . trim($value["ad_format"]);
-                $budget = (float) $value["budget"];
-                $budget_all = (float) $value["budget_all"];
-                                
-                $objPHPExcel = PHPExcel_IOFactory::load($path);
-                        
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('K10', PHPExcel_Shared_Date::PHPToExcel($quotation_date));
-                $objPHPExcel->getActiveSheet()->getStyle("K10")->getNumberFormat()->setFormatCode(PHPExcel_Style_NumberFormat::FORMAT_DATE_XLSX15 );
 
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('K12', $quotation_no);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('K14', $job_no);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E10', $value["contact_name"]);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E11', $company_title);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E12', $company_address);
+            // Rendering lives in QuotationExporter so that the very code that writes
+            // a quotation can be exercised without CodeIgniter, a database or HTTP:
+            // see code/tests/QuotationExporterTest.php.
+            $exporter = new QuotationExporter(
+                $template,
+                $root.'/public_html/upload/quotation/ap/img/'
+            );
 
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E22', $detail);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E23', $detail_project);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E24', $detail_sub);
-
-                // Pure media from media plan (K24) + Agency Fee 11.5% block + BAHTTEXT formula
-                $media_cost = (float) $value["media_cost"];
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('K24', ($media_cost > 0) ? $media_cost : $budget);
-
-                $feeFont = array(
-                    'font' => array(
-                        'name'   => 'CordiaUPC',
-                        'size'   => 14,
-                        'color'  => array('rgb' => '000000'),
-                        'italic' => false
-                    )
-                );
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('J47', ' Agency Fee 11.5%');
-                $objPHPExcel->setActiveSheetIndex(0)->getStyle('J47')->applyFromArray($feeFont);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('L47', '=L46*11.5/100');
-                $objPHPExcel->setActiveSheetIndex(0)->getStyle('L47')->applyFromArray($feeFont);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('L48', '=L46*(1+11.5/100)');
-
-                //$objPHPExcel->setActiveSheetIndex(0)->setCellValue('L50', $budget_all);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('D50', '=_xlfn.BAHTTEXT(L50)');
-                
-                //$objPHPExcel->setActiveSheetIndex(0)->setCellValue('D50', '=BAHTTEXT(1999)');
-
-                //Save as an Excel BIFF (xls) file
-
-                $versionExcel = "Xlsx"; // .xlsx only
-                $extFile = ".xlsx";
-                
-                $saveFileName = $quotation_no."_".$file_project;                
-                $saveFileName = $this->sanitize_text($saveFileName,'-');                
-                $saveFileNameFull = $saveFileName.$extFile;                
-                $pathSaveFile1 = $filepath.$saveFileNameFull;
-                
-                // Insert standard images (header logo, stamp, signatures) — mirrors APQT 2_image_change_2025.py
-                $this->insert_quotation_images($objPHPExcel);
-
-                $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel,$versionExcel);
-                
-                $objWriter->setPreCalculateFormulas(true);
-//                ob_end_clean();                                               
-                $objWriter->save($pathSaveFile1);
-
-                // Convert the quotation to PDF (LibreOffice headless) alongside the .xlsx
-                $this->convert_to_pdf($pathSaveFile1);
-                
-//                if ($key==2) { break; }
-                
-            }                        
-        }                                        
+            foreach ($quotation as $value) {
+                $exporter->export($value, $filepath);
+            }
+        }
     }
     
     /**
@@ -474,19 +404,11 @@ class QuotationAP extends MX_Controller
      */
     function convert_to_pdf($xlsx_path)
     {
-        if (!file_exists($xlsx_path)) {
-            return false;
-        }
+        require_once APPPATH . 'libraries/QuotationExporter.php';
+        $root = realpath(dirname(__FILE__).'/../../../..');
+        $exporter = new QuotationExporter('', $root.'/public_html/upload/quotation/ap/img/');
 
-        $dir = dirname($xlsx_path);
-        $cmd = 'soffice --headless --norestore --convert-to pdf --outdir '
-             . escapeshellarg($dir) . ' ' . escapeshellarg($xlsx_path)
-             . ' 2>&1';
-
-        exec($cmd, $output, $exitCode);
-
-        $pdf = substr($xlsx_path, 0, -5) . '.pdf';
-        return ($exitCode === 0 && file_exists($pdf));
+        return $exporter->convertToPdf($xlsx_path) !== null;
     }
 
     /**
@@ -495,35 +417,11 @@ class QuotationAP extends MX_Controller
      */
     function insert_quotation_images($objPHPExcel)
     {
-        $imgPath = realpath(dirname(__FILE__).'/../../../..').'/public_html/upload/quotation/ap/img/';
-        if (!is_dir($imgPath)) {
-            return;
-        }
+        require_once APPPATH . 'libraries/QuotationExporter.php';
+        $root = realpath(dirname(__FILE__).'/../../../..');
+        $exporter = new QuotationExporter('', $root.'/public_html/upload/quotation/ap/img/');
 
-        $sheet = $objPHPExcel->getActiveSheet();
-
-        // Wipe any existing images in the template
-        $sheet->getDrawingCollection()->exchangeArray(array());
-
-        $images = array(
-            array('file' => 'ewit_resizeto_075x110in-and_140x100in.png', 'width' => 71.25, 'height' => 104.5, 'anchor' => 'A2'),
-            array('file' => 'signature_or_resizeto_126x070in.png',       'width' => 113.4, 'height' => 63.0,  'anchor' => 'G55'),
-            array('file' => 'ewit_logo-stamp_2025v2_075x116in.png',      'width' => 75.0,  'height' => 116.4, 'anchor' => 'I53'),
-            array('file' => 'signature_ake_resizeto_137x079in.png',      'width' => 123.3, 'height' => 71.1,  'anchor' => 'K55'),
-        );
-
-        foreach ($images as $img) {
-            $file = $imgPath.$img['file'];
-            if (!file_exists($file)) continue;
-
-            $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
-            $drawing->setName(pathinfo($file, PATHINFO_FILENAME));
-            $drawing->setPath($file);
-            $drawing->setHeight($img['height']);
-            $drawing->setWidth($img['width']);
-            $drawing->setCoordinates($img['anchor']);
-            $drawing->setWorksheet($sheet);
-        }
+        $exporter->insertImages($objPHPExcel);
     }
 
     /**

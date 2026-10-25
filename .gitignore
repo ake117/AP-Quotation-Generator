@@ -23,3 +23,7 @@ exported_*/
 # for the PDF gate). The generic rule above ignores the rest.
 !exported_from original system_20260925/
 !exported_from original system_20260925/**
+
+# Test tooling
+code/tools/phpunit.phar
+code/.phpunit.cache/
