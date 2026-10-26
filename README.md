@@ -196,6 +196,23 @@ N เลข และบันทึกตัวนับครั้งเด�
 > **ยังค้าง:** หน้า UI ยังไม่มีช่องกรอกจำนวนใบ — จำนวนใบอ่านจาก Note ที่มากับ row อยู่แล้ว
 > แต่การออกเลขรันจริงจาก `quotation_ap_running` ตอน split ยังไม่ได้ต่อ
 
+## ไฟล์ที่ได้กลับมาหลัง import + export
+
+```
+upload/quotation/ap/archive/{folder}.zip
+    ├─ 2026-1591_<brief>.xlsx      ← ใบ quotation
+    ├─ 2026-1592_<brief>.xlsx
+    └─ Mediaplan.xlsx              ← plan ที่เติมเลข QT แล้ว (1 แถว = 1 ใบ)
+upload/quotation/ap/archive/{folder}_pdf.zip
+    └─ ทุกใบเป็น PDF
+```
+
+`Mediaplan.xlsx` คือไฟล์ที่ paste กลับเข้า PO Status ได้เลย:
+- แถวที่ split จะถูก **แทรกแถวใหม่** ให้ครบตามจำนวนใบ (`MediaPlanWriter::writeRow`)
+- เติม `QT No.` ต่อใบ, `Project` จาก lookup, `BriefName` แบบ D+C, `Note` เหลือ ID เดียว
+- คอลัมน์ที่เป็นของทั้ง entry (วันที่, objective, ad format, period, …) ถูกคัดลอกลงมาทุกแถว
+- แถวที่อยู่ถัดลงไปไม่ถูกทับ (เขียนจากล่างขึ้นบน)
+
 ## Tests (gate)
 
 ใบเสนอราคาต้องจบที่ PDF ที่ถูกต้อง เทสต์จึงรัน render จริงแล้วตรวจไฟล์ที่ได้:

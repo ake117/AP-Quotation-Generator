@@ -119,6 +119,7 @@ class QuotationAP extends MX_Controller
                     $coldata = $this->excel_search_col($worksheet, $coldata);
                     if ($coldata['error'] == false) {
                         $data_import = array();
+                        $sheetWrites = array();
                         $firstDataRow = (isset($coldata['header_row']) ? (int) $coldata['header_row'] : 1) + 1;
                         for($row=$firstDataRow; $row<=$highestRow; $row++) {
                             $datarow = array();
@@ -152,7 +153,11 @@ class QuotationAP extends MX_Controller
                                 $quotation_running = $issued['last'];
 
                                 $splitRows = QuotationBatch::splitRows($datarow, $issued['numbers']);
-                                $objPHPExcel->setActiveSheetIndex($i)->setCellValueByColumnAndRow($coldata['pos']['QT NO.'],$row, $splitRows[0]['quotation_no']);
+
+                                // Written back to the sheet only after every row has been
+                                // read: inserting rows mid-loop would shift the ones still
+                                // to come.
+                                $sheetWrites[$row] = $splitRows;
 
                                 foreach ($splitRows as $splitRow) {
                                     $data_import[] = $splitRow;
@@ -164,6 +169,16 @@ class QuotationAP extends MX_Controller
 //                        print_r("<pre>");
 //                        print_r($data_import);
 //                        print_r("</pre>");
+
+                        // Bottom-up, so an inserted row never moves a row still waiting.
+                        if (!empty($sheetWrites)) {
+                            require_once APPPATH . 'libraries/MediaPlanWriter.php';
+                            krsort($sheetWrites);
+                            foreach ($sheetWrites as $writeRow => $documents) {
+                                MediaPlanWriter::writeRow($worksheet, $writeRow, $documents, $coldata['pos'], $coldata['field']);
+                            }
+                        }
+
                         $this->quotation->insert_data($coldata['table'],$data_import);
                         
                         if ($uploadFile == 'file_quotation_data') {
@@ -513,10 +528,9 @@ class QuotationAP extends MX_Controller
         $xlsxZipName = "{$folder}.zip";
         $pdfZipName  = "{$folder}_pdf.zip";
 
-        // Remove media plan files from the temp dir (not part of any zip)
-        foreach (glob($filepath."Mediaplan*") as $mediaplanFile) {
-            @unlink($mediaplanFile);
-        }
+        // The media plan now travels back with the quotations: it carries the QT numbers
+        // the import wrote, one row per document, so the team can paste it straight into
+        // the PO Status file.
 
         $xlsxZip = new ZipArchive;
         $pdfZip  = new ZipArchive;
