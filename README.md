@@ -109,6 +109,18 @@ Import ต้องใช้ `sql_mode='NO_AUTO_VALUE_ON_ZERO,ALLOW_INVALID_DATE
 - **ไฟล์**: controllers/views ของ Estimated + Production Cost ย้ายไป `modules/admin/_removed_quotation_module/` (รอลบถาวร)
 - **Frontend CMS เก่า** (Booking, Agents, Magazine, Signup ฯลฯ) ยังอยู่ใน `application/controllers/` — ไม่ได้ใช้ แต่ยังไม่ได้ลบ
 
+## ไฟล์ต้นทาง 2 ไฟล์
+
+| ไฟล์ | ใช้ทำอะไร | ชีต |
+|---|---|---|
+| `Ewit_AP Online Media Plan 2024-2026` | media plan ที่ใช้งานจริงของเดือน | 1 เดือน = 1 tab |
+| `AP Quotation - PO Status 2026` | ออกใบ Quotation + ติดตามสถานะบน AP Webvendor | **tab แรก = ข้อมูล media plan** (ชื่อ tab เปลี่ยนทุกเดือน เช่น `0926` → `1026`) + tab **ProjectID** (ใช้ทำ `ProjectDirectory`) |
+
+- ชื่อ tab ที่ import ต้องตรงกับ `date_format($quotation_date, "my")` เช่น กันยายน 2026 = `0926`
+- **หัวตารางอยู่ row 4** ในไฟล์ PO Status (เหนือขึ้นไปเป็นแถวสรุปยอด) — `excel_search_col()` จึงสแกน
+  8 แถวแรกแล้วเลือกแถวที่ตรงชื่อคอลัมน์มากที่สุด (`QuotationBatch::headerRow`) ไม่ต้องแก้โค้ดเวลาทีมย้ายหัวตาราง
+- แถวข้อมูลเริ่มที่ `header_row + 1`
+
 ## การแบ่งหนึ่งแถวเป็นหลายใบ (split)
 
 `QuotationBatch::export()` รับหนึ่ง row แล้วคืนรายการเอกสาร — **จำนวนใบมาจาก column E (Note)**
@@ -156,6 +168,11 @@ note = 40144/70122   →  2 ใบ
   2026-1591_ทาวน์โฮม-และ-บ้านแฝด-โซน-เพชรเกษม-บางแค_Pleno-Petchkasem-91
   2026-1592_ทาวน์โฮม-และ-บ้านแฝด-โซน-เพชรเกษม-บางแค_Pleno-Town-Petchkasem-81
 ```
+
+**ตอน import แถวเดียวจะถูกแตกเป็นหลายแถว** — 1 ใบ = 1 แถว + เลขของตัวเอง (แบบเดียวกับที่ทีมทำมือ:
+แถว 49 สองบรรทัด 2026/1591 กับ 2026/1592) โดย `QuotationBatch::splitRows()` สร้างแถวใหม่
+ครบทุกช่อง (โครงการจาก lookup, ชื่อไฟล์แบบ D+C, ยอดแบ่ง 6 ตำแหน่ง, `note` เหลือ ID เดียว
+เพื่อไม่ให้ export แตกซ้ำ) — ทำให้ export เป็นการ render 1:1
 
 **เลขใบ** — ระบบ **ออกรันต่อจากตัวนับ `quotation_ap_running` เอง**: ตัวนับเก็บ "เลขสุดท้ายที่ใช้"
 ดังนั้นถ้า counter = 1590 ใบถัดไปคือ **1591** (เพิ่มก่อนใช้) ใบที่ split ออก N ใบจะได้เลขต่อกัน

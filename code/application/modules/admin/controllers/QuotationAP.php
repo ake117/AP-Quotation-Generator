@@ -23,6 +23,8 @@ class QuotationAP extends MX_Controller
     }
            
     function excel_search_col($worksheet, $coldata) {     
+        require_once APPPATH . 'libraries/QuotationBatch.php';
+
         // Columns that may be absent in older media plans (optional, filled with NULL)
         $optional = array('PURE MEDIA', 'BG', 'PERIOD');
         
@@ -32,10 +34,24 @@ class QuotationAP extends MX_Controller
         
         $highestColumn = $worksheet->getHighestColumn();
         $highestColumnIndex = PHPExcel_Cell::columnIndexFromString($highestColumn);               
+
+        // The PO Status file keeps its headers on row 4 (counters sit above them); an
+        // older media plan starts on row 1. Use whichever row names the most columns.
+        $headerRow = isset($coldata['header_row']) ? (int) $coldata['header_row'] : 0;
+        if ($headerRow < 1) {
+            $probe = array();
+            for ($probeRow = 1; $probeRow <= 8; $probeRow++) {
+                for ($probeCol = 0; $probeCol <= $highestColumnIndex; $probeCol++) {
+                    $probe[$probeRow][$probeCol] = $worksheet->getCellByColumnAndRow($probeCol, $probeRow)->getValue();
+                }
+            }
+            $headerRow = QuotationBatch::headerRow($probe, array_keys($coldata['field']));
+        }
+
         for($col=0; $col<=$highestColumnIndex; $col++) {            
-            $colname = strtoupper(trim($worksheet->getCellByColumnAndRow($col, 1)->getValue()));  
+            $colname = strtoupper(trim($worksheet->getCellByColumnAndRow($col, $headerRow)->getValue()));  
             if (array_key_exists($colname, $coldata['field'])) {
-                $coldata['pos'][$colname] = $col;
+                $coldata['pos'][$colname] = $col;            
             }         
         }
 
@@ -46,6 +62,8 @@ class QuotationAP extends MX_Controller
                 unset($coldata['field'][$key]);
             }
         }
+
+        $coldata['header_row'] = $headerRow;
 
         if (array_search(999, $coldata['pos']) == false) {
             $coldata['error'] = false;
@@ -101,7 +119,8 @@ class QuotationAP extends MX_Controller
                     $coldata = $this->excel_search_col($worksheet, $coldata);
                     if ($coldata['error'] == false) {
                         $data_import = array();
-                        for($row=2; $row<=$highestRow; $row++) {
+                        $firstDataRow = (isset($coldata['header_row']) ? (int) $coldata['header_row'] : 1) + 1;
+                        for($row=$firstDataRow; $row<=$highestRow; $row++) {
                             $datarow = array();
                             $firstcol = '';
                             foreach ($coldata['pos'] as $colname => $colposition) {
@@ -116,16 +135,31 @@ class QuotationAP extends MX_Controller
                                 $datarow[$coldata['field'][$colname]] = trim($val);
                             }
                             
-                            if ($uploadFile == 'file_quotation_data') {
-                                $quotation_running++; 
-                                $quotation_year = date_format($inpt_quotation_date,"Y");
-                                $quotation_no = $quotation_year."/".str_pad($quotation_running, 4, '0', STR_PAD_LEFT);;                                        
-                                $datarow['quotation_no'] = $quotation_no;
-                                $objPHPExcel->setActiveSheetIndex($i)->setCellValueByColumnAndRow($coldata['pos']['QT NO.'],$row, $quotation_no);
-                            }
-
                             if ($datarow[$firstcol] == '') { break; }
-                            $data_import[] = $datarow;          
+
+                            if ($uploadFile == 'file_quotation_data') {
+                                require_once APPPATH . 'libraries/QuotationBatch.php';
+
+                                $quotation_year = date_format($inpt_quotation_date,"Y");
+
+                                // One plan row can stand for several documents: the note
+                                // column lists a ProjectID each, so the row becomes that
+                                // many quotation rows with consecutive numbers (rows
+                                // 49/49 of the September sheet: 2026/1591, 2026/1592).
+                                $ids = QuotationBatch::projectIds((string) ($datarow['note'] ?? ''));
+                                $count = max(1, count($ids));
+                                $issued = QuotationBatch::consecutiveNumbers($quotation_year, $quotation_running, $count);
+                                $quotation_running = $issued['last'];
+
+                                $splitRows = QuotationBatch::splitRows($datarow, $issued['numbers']);
+                                $objPHPExcel->setActiveSheetIndex($i)->setCellValueByColumnAndRow($coldata['pos']['QT NO.'],$row, $splitRows[0]['quotation_no']);
+
+                                foreach ($splitRows as $splitRow) {
+                                    $data_import[] = $splitRow;
+                                }
+                            } else {
+                                $data_import[] = $datarow;
+                            }
                         }   
 //                        print_r("<pre>");
 //                        print_r($data_import);

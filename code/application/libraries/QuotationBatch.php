@@ -145,6 +145,93 @@ final class QuotationBatch
     }
 
     /**
+     * The row that carries the column headers.
+     *
+     * The PO Status file keeps its headers on row 4 (above it sit the counters), while an
+     * older media plan keeps them on row 1. Pick the row that names the most columns we
+     * know, so neither layout has to be told apart by hand.
+     *
+     * @param array<int, array<int, mixed>> $rows 1-based: [rowNumber => [colIndex => value]]
+     * @param array<int, string> $known the header names we are looking for
+     */
+    public static function headerRow(array $rows, array $known): int
+    {
+        $known = array_map('strtoupper', $known);
+        $best = 1;
+        $bestHits = -1;
+
+        foreach ($rows as $rowNumber => $cells) {
+            $hits = 0;
+            foreach ($cells as $cell) {
+                $cell = strtoupper(trim((string) $cell));
+                if ($cell !== '' && in_array($cell, $known, true)) {
+                    $hits++;
+                }
+            }
+
+            if ($hits > $bestHits) {
+                $bestHits = $hits;
+                $best = (int) $rowNumber;
+            }
+        }
+
+        return $bestHits > 0 ? $best : 1;
+    }
+
+    /**
+     * One source row -> the rows its documents are.
+     *
+     * A plan row that names several ProjectIDs is written the way the team writes it by
+     * hand: one row per document, each with its own number, its own project and its own
+     * share of the budget (rows 49/49 of the September sheet, 2026/1591 and 2026/1592).
+     *
+     * @param array<int, string> $numbers one number per document, already reserved
+     * @return array<int, array<string, mixed>>
+     */
+    public static function splitRows(array $row, array $numbers): array
+    {
+        $ids = self::projectIds((string) ($row['note'] ?? ''));
+        $count = max(1, count($numbers));
+        $amounts = (!empty($row['split_amounts']) && is_array($row['split_amounts']))
+            ? array_map('floatval', array_values($row['split_amounts']))
+            : self::splitBudget(self::budgetOf($row), $count);
+
+        $agencyFee = !isset($row['agency_fee']) || (bool) $row['agency_fee'];
+        $rows = array();
+
+        foreach (array_slice($amounts, 0, $count) as $index => $amount) {
+            $doc = $row;
+            $projectId = $ids[$index] ?? null;
+
+            if ($projectId !== null) {
+                $doc['project'] = self::nameOf($projectId, $row);
+                $doc['project_file'] = self::withProject(
+                    (string) ($row['project_file'] ?? ''),
+                    (string) ($row['project'] ?? ''),
+                    $doc['project']
+                );
+                // Each row stands for one document, so it names one ID — otherwise the
+                // export would split it again.
+                $doc['note'] = $projectId;
+            }
+
+            $doc['quotation_no'] = (string) ($numbers[$index] ?? $row['quotation_no'] ?? '');
+            $doc['budget_all'] = $amount;
+            $doc['budget'] = $amount;
+            $doc['media_cost'] = round($amount / (1.07 * ($agencyFee ? 1.115 : 1.0)), 6);
+            $rows[] = $doc;
+        }
+
+        return $rows;
+    }
+
+    /** Name for an ID from the directory, falling back to the row's own project. */
+    private static function nameOf(string $projectId, array $row): string
+    {
+        return ProjectDirectory::name($projectId) ?? (string) ($row['project'] ?? '');
+    }
+
+    /**
      * The numbers a split takes, run on from the last one used: 2026/1591, 2026/1592, …
      *
      * Same shape the import writes (year + four digits, growing past 9999 without

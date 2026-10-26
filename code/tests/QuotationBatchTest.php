@@ -274,6 +274,76 @@ final class QuotationBatchTest extends TestCase
         $this->assertSame(array('2026/1542', '2026/1543'), $issued['numbers']);
     }
 
+    // ------------------------------------------------------- one row, many documents
+
+    public function test_a_plan_row_becomes_one_row_per_document(): void
+    {
+        // The September sheet, No. 49, before anyone split it by hand.
+        $source = $this->row(array(
+            'project'      => 'Pleno Petchkasem 91',
+            'project_file' => 'ทาวน์โฮม และ บ้านแฝด โซน เพชรเกษม-บางแค_Pleno Petchkasem 91',
+            'note'         => '40144/70122',
+            'budget_all'   => 10000,
+        ));
+
+        $rows = QuotationBatch::splitRows($source, array('2026/1591', '2026/1592'));
+
+        $this->assertCount(2, $rows);
+
+        $this->assertSame('2026/1591', $rows[0]['quotation_no']);
+        $this->assertSame('Pleno Petchkasem 91', $rows[0]['project']);
+        $this->assertSame(
+            'ทาวน์โฮม และ บ้านแฝด โซน เพชรเกษม-บางแค_Pleno Petchkasem 91',
+            $rows[0]['project_file']
+        );
+        // One ID per row, or the export would split the row a second time.
+        $this->assertSame('40144', $rows[0]['note']);
+
+        $this->assertSame('2026/1592', $rows[1]['quotation_no']);
+        $this->assertSame('Pleno Town Petchkasem 81', $rows[1]['project']);
+        $this->assertSame(
+            'ทาวน์โฮม และ บ้านแฝด โซน เพชรเกษม-บางแค_Pleno Town Petchkasem 81',
+            $rows[1]['project_file']
+        );
+        $this->assertSame('70122', $rows[1]['note']);
+
+        // 10,000 over two is 5,000 each, and each carries its own pure media.
+        $this->assertSame(5000.0, (float) $rows[0]['budget_all']);
+        $this->assertSame(5000.0, (float) $rows[1]['budget_all']);
+        $this->assertEqualsWithDelta(4190.939189, (float) $rows[0]['media_cost'], 0.000001);
+    }
+
+    public function test_a_row_with_one_id_stays_one_row(): void
+    {
+        $rows = QuotationBatch::splitRows($this->row(array('note' => '40194')), array('2026/1684'));
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('2026/1684', $rows[0]['quotation_no']);
+        $this->assertSame(15000.0, (float) $rows[0]['budget_all']);
+    }
+
+    public function test_the_headers_are_found_wherever_the_sheet_keeps_them(): void
+    {
+        $known = array('PROJECT', 'BRIEFNAME', 'QT NO.', 'PERIOD', 'NOTE');
+
+        // The PO Status file: counters above, headers on row 4.
+        $poStatus = array(
+            1 => array(''),
+            2 => array('รอ PO', 'ส่งงานแล้ว'),
+            3 => array('95,000.00', '10,584,874.25'),
+            4 => array('Project', 'BriefName', 'QT No.', 'Period', 'Note'),
+            5 => array('BG2 Campaign', 'Grande Pleno...', '2026/1590', '7 - 13 Sep 2026', '40194'),
+        );
+        $this->assertSame(4, QuotationBatch::headerRow($poStatus, $known));
+
+        // An older plan starts at row 1.
+        $older = array(1 => array('Project', 'BriefName', 'QT No.'), 2 => array('Aspire', 'Aspire_9.9', '2026/1539'));
+        $this->assertSame(1, QuotationBatch::headerRow($older, $known));
+
+        // Nothing recognisable: fall back to the first row rather than inventing one.
+        $this->assertSame(1, QuotationBatch::headerRow(array(3 => array('a', 'b')), $known));
+    }
+
     // ------------------------------------------------------- merge still wins
 
     public function test_a_merged_row_is_one_document_holding_every_item(): void
