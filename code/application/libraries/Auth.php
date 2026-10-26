@@ -7,7 +7,7 @@ class Auth
 {
     protected $auth_check_permyssion_by_hook = FALSE;
     protected $auth_white_list = array();
-    protected $auth_password_hash_type = 'md5';
+    protected $auth_password_hash_type = 'bcrypt';
     protected $auth_password_hash_salt;
 
     public function __construct($config = array())
@@ -186,10 +186,12 @@ class Auth
 
     public function change_password($id, $old_password = NULL, $new_password)
     {
+        // Plain passwords: the model verifies the old one against the stored
+        // hash (bcrypt or legacy MD5) and hashes the new one before saving.
         $data = array();
         $data['id'] = $id;
-        if($old_password != NULL)$data['old_password'] = $this->_hash_password($old_password);
-        $data['new_password'] = $this->_hash_password($new_password);
+        if($old_password != NULL)$data['old_password'] = $old_password;
+        $data['new_password'] = $new_password;
 
         $updated_password = $this->model->update_password($data);
 
@@ -202,9 +204,11 @@ class Auth
     public function login($email, $password, $remember = FALSE, $backlink = NULL)
     {
         //TODO Fazer o funcionamento do backlink.
+        // The model verifies the plain password (bcrypt or legacy MD5) and
+        // upgrades a legacy hash on success, so no pre-hashing here.
         $data = array(
             'email' => $email,
-            'password' => $this->_hash_password($password)
+            'password' => $password
         );
         $login = $this->model->login_account($data);
         if ($login == FALSE)
@@ -390,14 +394,60 @@ class Auth
     {
         switch ($this->auth_password_hash_type)
         {
-            case 'md5':
-                return md5($password . $this->auth_password_hash_salt);
+            case 'bcrypt':
+                return password_hash($password, PASSWORD_DEFAULT);
                 break;
 
-            case 'something': //TODO Codificar outras opções de criptografia aqui.
-                // ...
+            case 'md5':
+                // Legacy only: still used to verify passwords that were never rehashed.
+                return md5($password . $this->auth_password_hash_salt);
                 break;
         }
+    }
+
+    /**
+     * Verify a plain password against a stored hash, accepting both bcrypt and
+     * the legacy unsalted MD5 hashes. Returns TRUE for a match.
+     *
+     * @param string $password plain password from the login form
+     * @param string $hash     value from cms_accounts.password
+     * @return bool
+     */
+    private function _verify_password($password, $hash)
+    {
+        if ($hash === null || $hash === '') {
+            return FALSE;
+        }
+
+        // bcrypt / argon2 hashes are always longer than 32 chars and carry a $ prefix.
+        if (strlen($hash) > 32 || strpos($hash, '$') === 0) {
+            return password_verify($password, $hash);
+        }
+
+        // Legacy MD5 (32 hex chars, unsalted).
+        if (strlen($hash) === 32 && ctype_xdigit($hash)) {
+            return md5($password . $this->auth_password_hash_salt) === $hash;
+        }
+
+        return FALSE;
+    }
+
+    /**
+     * TRUE when the stored hash is a legacy MD5 that should be upgraded on the
+     * next successful login.
+     *
+     * @param string $hash
+     * @return bool
+     */
+    private function _needs_rehash($hash)
+    {
+        if ($hash === null || $hash === '') {
+            return FALSE;
+        }
+        if (strpos($hash, '$') === 0) {
+            return password_needs_rehash($hash, PASSWORD_DEFAULT);
+        }
+        return strlen($hash) === 32 && ctype_xdigit($hash);
     }
 
     private function _prepare_url($url)

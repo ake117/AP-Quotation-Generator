@@ -36,14 +36,39 @@ class Auth_model extends MY_Model {
     }
 
     // Atualiza a senha de uma conta
+    //
+    // Receives PLAIN passwords. The old one is verified in PHP (bcrypt or legacy
+    // MD5); the new one is hashed with password_hash() before saving.
     public function update_password($data)
     {
-        // Verifica se foi passado a senha anterior e faz a verificação.
-        if(isset($data['old_password'])){
-            $this->db->where('password', $data['old_password']);
-        }
         $this->db->where('id', $data['id']);
-        $this->db->update($this->account_table, array('password' => $data['new_password'], 'updated' => date('Y-m-d H:i:s')));
+        $query = $this->db->get($this->account_table);
+        if ($query->num_rows() === 0) {
+            return 0;
+        }
+
+        if (isset($data['old_password'])) {
+            $stored = (string) $query->row()->password;
+            $plain  = (string) $data['old_password'];
+
+            if (strpos($stored, '$') === 0) {
+                $valid = password_verify($plain, $stored);
+            } elseif (strlen($stored) === 32 && ctype_xdigit($stored)) {
+                $valid = (md5($plain) === $stored);
+            } else {
+                $valid = FALSE;
+            }
+
+            if (!$valid) {
+                return 0;
+            }
+        }
+
+        $this->db->where('id', $data['id']);
+        $this->db->update($this->account_table, array(
+            'password' => password_hash($data['new_password'], PASSWORD_DEFAULT),
+            'updated'  => date('Y-m-d H:i:s'),
+        ));
         return $this->db->affected_rows();
     }
 
@@ -69,6 +94,11 @@ class Auth_model extends MY_Model {
     }
 
     // Ferifica o login de uma conta
+    //
+    // Passwords are now stored with password_hash(). The plain password arrives
+    // here (not a pre-computed hash) because bcrypt/argon2 hashes are salted and
+    // cannot be compared in SQL. Legacy MD5 rows are verified once and upgraded
+    // to password_hash() on the spot.
     public function login_account($data)
     {
             // Verifica se o IP está banido.
@@ -83,18 +113,47 @@ class Auth_model extends MY_Model {
             }
 
             $this->db->where('email', $data['email']);
-            $this->db->where('password', $data['password']);
             $this->db->where('status', 1);
             $query = $this->db->get($this->account_table);
+
             if ($query->num_rows() > 0){
+                    $user = $query->row();
+                    $stored = (string) $user->password;
+                    $plain  = (string) $data['password'];
+
+                    $valid = FALSE;
+                    $legacy = FALSE;
+
+                    if (strpos($stored, '$') === 0) {
+                            // password_hash() output (bcrypt/argon2)
+                            $valid = password_verify($plain, $stored);
+                    } elseif (strlen($stored) === 32 && ctype_xdigit($stored)) {
+                            // legacy unsalted MD5
+                            $valid  = (md5($plain) === $stored);
+                            $legacy = $valid;
+                    }
+
+                    if (!$valid) {
+                            $this->_add_attempt($_SERVER['REMOTE_ADDR']);
+                            return FALSE;
+                    }
+
+                    // Upgrade a legacy hash the first time the owner logs in.
+                    if ($legacy || password_needs_rehash($stored, PASSWORD_DEFAULT)) {
+                            $this->db->where('id', $user->id);
+                            $this->db->update($this->account_table, array(
+                                    'password' => password_hash($plain, PASSWORD_DEFAULT),
+                                    'updated'  => date('Y-m-d H:i:s'),
+                            ));
+                    }
+
                     // Verifica se deve registrar o login.
                     if ($this->config->item('auth_log_access') == TRUE){
-                            $user = $query->row();
                             $temp = array('user_id' => $user->id, 'ip_address' => $_SERVER['REMOTE_ADDR'], 'created' => date('Y-m-d H:i:s'));
                             $this->db->insert('log_access', $temp);
                     }
                     $this->_clear_attempt($_SERVER['REMOTE_ADDR']);
-                    return $query->row();
+                    return $user;
             } else {
                     $this->_add_attempt($_SERVER['REMOTE_ADDR']);
                     return FALSE;
