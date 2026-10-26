@@ -261,6 +261,19 @@ final class QuotationBatchTest extends TestCase
         $this->assertSame(array(), QuotationBatch::consecutiveNumbers(2026, 10, 0)['numbers']);
     }
 
+    public function test_a_new_number_never_repeats_one_already_on_file(): void
+    {
+        $this->assertSame(1541, QuotationBatch::highestNumber(array('2026/1541', '2026/1539', 'N/A')));
+        $this->assertSame(1541, QuotationBatch::highestNumber(array('1541')));
+        $this->assertSame(0, QuotationBatch::highestNumber(array()));
+        $this->assertSame(0, QuotationBatch::highestNumber(array('N/A', '')));
+
+        // The floor wins when the counter is behind what the database already holds.
+        $floor = QuotationBatch::highestNumber(array('2026/1541'));
+        $issued = QuotationBatch::consecutiveNumbers(2026, max(0, $floor), 2);
+        $this->assertSame(array('2026/1542', '2026/1543'), $issued['numbers']);
+    }
+
     // ------------------------------------------------------- merge still wins
 
     public function test_a_merged_row_is_one_document_holding_every_item(): void

@@ -411,9 +411,18 @@ class QuotationAP extends MX_Controller
             // on from the counter the import left behind (2026/1591, 2026/1592, …) and the
             // counter is saved once, after the whole export, so a failure part-way through
             // does not burn numbers that never printed.
-            $running = $this->quotation->get_quotationAP_running($quotation_date);
-            $running = ($running === false) ? 0 : (int) $running;
             $year = (int) date_format($quotation_date, 'Y');
+
+            // This month's counter first; a fresh month continues where the previous one
+            // stopped; and never below a number that is already on file.
+            $running = $this->quotation->get_quotationAP_running_exact($quotation_date);
+            if ($running === false) {
+                $running = $this->quotation->get_quotationAP_running($quotation_date);
+                $running = ($running === false) ? 0 : (int) $running;
+            }
+            $running = max($running, QuotationBatch::highestNumber(
+                $this->quotation->get_quotation_nos($year)
+            ));
 
             foreach ($quotation as $value) {
                 $count = $batch->documentCount($value);

@@ -44,6 +44,44 @@ SQL;
         return ($query->num_rows()>0)?$rs[0]['running']:false;
     }
     
+    /**
+     * The counter as it stands for this exact month — no shifting.
+     *
+     * get_quotationAP_running() deliberately reads the previous month, which is right
+     * when a month's import starts from where the last one ended. An export has to read
+     * the current month or a second export would re-issue numbers that were already used.
+     */
+    function get_quotationAP_running_exact($inpt_quotation_date)
+    {
+        $quotation_year = (int) date_format($inpt_quotation_date, "Y");
+        $quotation_month = (int) date_format($inpt_quotation_date, "m");
+
+        $this->db->select('running');
+        $this->db->from('quotation_ap_running');
+        $this->db->where('quotation_year', $quotation_year);
+        $this->db->where('quotation_month', $quotation_month);
+        $query = $this->db->get();
+        $rs = $query->result_array();
+
+        return ($query->num_rows() > 0) ? (int) $rs[0]['running'] : false;
+    }
+
+    /** Every quotation number already on file for a year, so a new one cannot repeat it. */
+    function get_quotation_nos($quotation_year)
+    {
+        $this->db->select('quotation_no');
+        $this->db->from('quotation_ap_data');
+        $this->db->like('quotation_no', $quotation_year . '/', 'after');
+        $query = $this->db->get();
+
+        $numbers = array();
+        foreach ($query->result_array() as $row) {
+            $numbers[] = $row['quotation_no'];
+        }
+
+        return $numbers;
+    }
+
     function update_quotationAP_running($inpt_quotation_date, $running)  
     {        
         $quotation_year = (int) date_format($inpt_quotation_date,"Y");

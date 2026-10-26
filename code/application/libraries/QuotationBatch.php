@@ -166,6 +166,32 @@ final class QuotationBatch
     }
 
     /**
+     * The highest number any of these quotation numbers already uses, 0 when none do.
+     *
+     * "2026/1541" -> 1541. A document must never be issued a number that is already on
+     * file, so an export starts from the higher of the counter and this floor.
+     *
+     * @param array<int, mixed> $quotationNos
+     */
+    public static function highestNumber(array $quotationNos): int
+    {
+        $highest = 0;
+
+        foreach ($quotationNos as $quotationNo) {
+            $quotationNo = (string) $quotationNo;
+            $position = strrpos($quotationNo, '/');
+            $digits = $position === false ? $quotationNo : substr($quotationNo, $position + 1);
+            $digits = preg_replace('/[^0-9]/', '', $digits);
+
+            if ($digits !== '') {
+                $highest = max($highest, (int) $digits);
+            }
+        }
+
+        return $highest;
+    }
+
+    /**
      * Explicit amounts win — unequal splits are supported — otherwise the budget is
      * shared equally.
      *
