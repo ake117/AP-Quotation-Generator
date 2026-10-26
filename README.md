@@ -8,7 +8,7 @@
 
 | รายการ | รายละเอียด |
 |---|---|
-| Repo | `ake117/AP_Quotation_by_Chat` (private, branch `main`) |
+| Repo | `ake117/AP-Quotation-Generator` (private, branch `main`; เดิมชื่อ `AP_Quotation_by_Chat`) |
 | Local path | `/home/ake/AI_Projects/AP_QT_Generator` |
 | Framework | CodeIgniter **3.1.13** + Smarty template + AdminLTE 2.4 (skin ต่อ account) + PhpSpreadsheet 5.10 (ผ่าน composer) |
 | Database | MySQL/MariaDB — schema `production` |
@@ -33,7 +33,11 @@ Password : APqt2026!local
 ```
 AP_QT_Generator/
 ├── backups/                    # DB backups (full + clean)
+├── example_data_source/        # ตัวอย่าง input จริง (media plan, company reference, synonym, หัวบริษัท)
+├── exported_from original system_20260925/   # ใบเสนอราคา 13 ใบจากระบบเดิม = golden reference
 ├── code/
+│   ├── tests/                  # PHPUnit spec + gate runner (run)
+│   ├── tools/                  # phpunit.phar + install script
 │   ├── application/            # CI app
 │   │   ├── config/database.php # DB credentials (user: productionmy)
 │   │   ├── config/auth.php     # ระบบ auth: attempts, autoban, white-list
@@ -82,7 +86,7 @@ AP_QT_Generator/
 
 Import ต้องใช้ `sql_mode='NO_AUTO_VALUE_ON_ZERO,ALLOW_INVALID_DATES'` เพราะ dump มี `'0000-00-00 00:00:00'`
 
-## Features ที่พัฒนาแล้ว (25/09/2026)
+## Features ที่พัฒนาแล้ว (อัปเดต 26/10/2026)
 
 - **Excel engine ใหม่** — PHPExcel → PhpSpreadsheet 5.10 ผ่าน compatibility bridge (`libraries/Excel.php`) โค้ด controller เดิมรันได้ไม่ต้องแก้; ติดตั้งด้วย `composer require phpoffice/phpspreadsheet`
 - **รับเฉพาะ .xlsx** — upload validation ปฏิเสธไฟล์อื่น, writer ใช้ Xlsx เท่านั้น
@@ -90,9 +94,12 @@ Import ต้องใช้ `sql_mode='NO_AUTO_VALUE_ON_ZERO,ALLOW_INVALID_DATE
 - **Export เป็น 2 zip** — ① `*.zip` เฉพาะ quotation xlsx (ไฟล์ Mediaplan ถูกตัดออก) ② `*_pdf.zip` เฉพาะ PDF
 - **PDF อัตโนมัติ** — ทุก quotation xlsx ถูก convert เป็น PDF ด้วย LibreOffice headless (`soffice --convert-to pdf`) ระหว่าง export
 - **ชื่อไฟล์ ≤ 74 ตัวอักษร** (ไม่รวมนามสกุล) — `sanitize_text()` ใช้ mb_substr นับ Thai chars ถูกต้อง
+- **Quotation render แยกเป็นคลาส** — `libraries/QuotationExporter.php` ทำ template → xlsx → PDF โดยไม่ต้องพึ่ง CodeIgniter/DB/HTTP; controller เหลือแค่เรียกใช้ (โค้ดชุดเดียวกับที่เทสต์ตรวจ)
+- **หลายรายการในใบเดียว** — ส่ง `items` array เข้ามา แต่ละ item ใช้ 2 แถวจากแถว 23 ลงไป (แถวชื่อ: `D` เลขที่, `E` โครงการ · แถวรายละเอียด: `E` รายการ, `J` จำนวน, `K` ราคา/หน่วย, `L` สูตรจำนวนเงิน); เมื่อมี `items` ต้องไม่เขียน `K24` เพราะจะทับราคาของรายการแรก
+- **K24 = PURE MEDIA + Agency Fee + VAT ที่ลงตัวเป็นเลขกลม** — K24 ใช้ค่า PURE MEDIA จาก media plan (คอลัมน์ N) หรือคำนวณจาก `BUDGET ALL`; Agency Fee 11.5% ปัดเป็นสตางค์ก่อนบวกเข้า net; ผลรวมจึงกลับมาเป็นยอดที่ลูกค้าอนุมัติพอดี (ทดสอบ 5,000 / 10,000 / 12,345 / 25,000 / 100,000) — งานที่ไม่มี fee ส่ง `agency_fee => false`
+- **E24** — `Boost post <period>` เมื่อมี period และเหลือแค่ `Boost post` เมื่อไม่มี (ไม่ต่อท้ายด้วย ad format)
 
 ### รอ input จากผู้ใช้
-- สูตรคำนวณ media fee ใหม่ (จะเปลี่ยนค่าหลาย cell ในไฟล์ export)
 - รูปภาพใหม่สำหรับแนบใน template.xlsx
 
 ## สิ่งที่ถูกถอดออก (cleanup เมื่อ 25/09/2026)
@@ -100,6 +107,19 @@ Import ต้องใช้ `sql_mode='NO_AUTO_VALUE_ON_ZERO,ALLOW_INVALID_DATE
 - **DB**: ตาราง legacy (`newsletter_email`, `videos`, `frontend_language`, `migrations`) + โมดูลในตาราง `modules` 11 รายการ (Posts, Floor, Room type, Banners, Gallery, Project rooms, Menu Manager, Report, Agents, Estimated, Production Cost) พร้อม actions/permissions
 - **ไฟล์**: controllers/views ของ Estimated + Production Cost ย้ายไป `modules/admin/_removed_quotation_module/` (รอลบถาวร)
 - **Frontend CMS เก่า** (Booking, Agents, Magazine, Signup ฯลฯ) ยังอยู่ใน `application/controllers/` — ไม่ได้ใช้ แต่ยังไม่ได้ลบ
+
+## Tests (gate)
+
+ใบเสนอราคาต้องจบที่ PDF ที่ถูกต้อง เทสต์จึงรัน render จริงแล้วตรวจไฟล์ที่ได้:
+
+```bash
+code/tests/run            # จาก root ของ repo (~4 วินาที)
+code/tests/run --testdox  # รับ flag ของ PHPUnit ตามปกติ
+```
+
+- ครอบ: ข้อมูลลูกค้า, เลขที่ใบ/Job No, PURE MEDIA, Agency Fee, VAT, ยอดรวมเลขกลม, ข้อความใน PDF, จำนวนเงินเป็นตัวอักษร, ชื่อไฟล์, รายการ E24, หลายรายการในใบเดียว
+- Golden reference: 13 ใบใน `exported_from original system_20260925/` — ถ้าเทสต์ขัดกับ reference ถือว่า reference ถูก
+- รันใน sandbox ได้ (ไม่พึ่ง `$HOME` หรือเน็ต) เพราะ `phpunit.phar` ถูก commit ไว้ใน `code/tools/`
 
 ## Backups
 
@@ -118,3 +138,4 @@ backups/production_clean_15tables_2026-09-25.sql.gz # หลัง cleanup ร�
 - [ ] `'0000-00-00 00:00:00'` ค้างในข้อมูลบางแถว — ควรแปลงเป็น NULL
 - [ ] MySQL 5.7 (prod) vs 8.4 (local) — รอะไรขึ้นต้องเช็ค sql_mode เสมอ
 - [ ] ลบไฟล์ใน `_removed_quotation_module/` + frontend controllers เก่าเมื่อยืนยันแล้ว
+- [ ] `agency_fee` ยัง default = เปิด (ตาม media plan ใหม่) — ถ้ามีงานที่ไม่มี fee ต้องส่ง flag ปิดมาจาก importer

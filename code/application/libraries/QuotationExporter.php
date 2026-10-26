@@ -76,9 +76,11 @@ class QuotationExporter
         $quotation_date = date_create($row['quotation_date']);
         $detail = 'Media Cost (' . date_format($quotation_date, 'F Y') . ')';
         $period_text = isset($row['period_text']) ? trim($row['period_text']) : '';
+        // Without a period the line reads just "Boost post": the ad format alone is
+        // already implied by the wording, and "Boost post Boostpost" reads like a typo.
         $detail_sub = ($period_text !== '')
             ? 'Boost post ' . $period_text
-            : 'Boost post ' . trim($row['ad_format']);
+            : 'Boost post';
 
         // The 11.5% agency fee is part of the media plan's own arithmetic
         // (BUDGET ALL -> BUDGET EX VAT -> PURE MEDIA), so it is on unless a row says

@@ -140,9 +140,8 @@ final class QuotationExporterTest extends TestCase
     }
 
     /**
-     * The item line reads "Boost post <period>" when the media plan gives a period,
-     * and falls back to the ad format when it does not. Confirmed against the current
-     * media plan (the September 2025 exports predate the period column).
+     * The item line reads "Boost post <period>" when the media plan gives a period and
+     * just "Boost post" when it does not — the ad format is not repeated after it.
      */
     public function test_the_item_description_uses_the_period_when_present(): void
     {
@@ -154,14 +153,14 @@ final class QuotationExporterTest extends TestCase
         $this->assertSame('Boost post 1 - 11 Sep 2026', $sheet->getCell('E24')->getValue());
     }
 
-    public function test_the_item_description_falls_back_to_the_ad_format(): void
+    public function test_the_item_description_is_boost_post_alone_without_a_period(): void
     {
         $row = $this->referenceRow();
         unset($row['period_text']);
 
         $sheet = $this->exporter()->fill($row)->getActiveSheet();
 
-        $this->assertSame('Boost post Boostpost', $sheet->getCell('E24')->getValue());
+        $this->assertSame('Boost post', $sheet->getCell('E24')->getValue());
     }
 
     /**

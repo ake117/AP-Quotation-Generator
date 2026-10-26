@@ -36,7 +36,12 @@ compares it against the document a human approved, which lives in
 - customer, billing entity, address, quotation no., job no., project, media cost
 - net = subtotal, VAT 7 %, grand total 10,000.00
 - the PDF carries those strings, and the total in words (หนึ่งหมื่นบาทถ้วน)
+- the item line reads `Boost post <period>`, or just `Boost post` without a period
 - the file name is filesystem-safe
+
+`tests/MultiItemQuotationTest.php` states the layout for several items before the
+implementation existed — two rows per item from 23 down, K24 untouched, rows below the
+last item empty, and the PDF listing every line.
 
 When a test disagrees with the reference, **the reference wins** — a difference is a
 finding, never a reason to edit the reference or loosen the assertion.
