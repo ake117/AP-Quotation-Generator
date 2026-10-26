@@ -125,11 +125,11 @@ class QuotationExporter
         // computes it so the chain lands on the round budget the client approved:
         //   Budget All -> /1.07 = Budget Ex VAT -> /1.115 = Pure media (N column)
         // then  Pure media + 11.5% fee + 7% VAT  =  Budget All  (a round number)
+        $pureMedia = self::pureMedia($row, $agencyFee);
         if ($items === null) {
             // A single-item row carries the whole media cost in K24; with several
             // items the subtotal is the sum of the line amounts, and writing K24
             // would overwrite the first item's unit price.
-            $pureMedia = self::pureMedia($row, $agencyFee);
             $sheet->setCellValue('K24', $pureMedia);
         }
 
@@ -144,10 +144,11 @@ class QuotationExporter
         if ($agencyFee) {
             $sheet->setCellValue('J47', ' Agency Fee 11.5%');
             $sheet->getStyle('J47')->applyFromArray($feeFont);
-            // The fee is rounded to satang before it is added: otherwise the net
-            // carries 9,345.78505 and the printed lines (9,345.79 + 654.21) do not
-            // add up to the printed total.
-            $precision = (int) ($row['fee_precision'] ?? 2);
+            // Round the fee to the precision the base figure deserves: a base that is
+            // exact to the satang (pure media from the plan, or a merged subtotal of
+            // priced lines) takes a two-decimal fee so the total lands on the round
+            // budget; a base we derived (or split) carries a fraction and keeps six.
+            $precision = (int) ($row['fee_precision'] ?? self::feePrecision($items, $pureMedia));
             $sheet->setCellValue('L47', '=ROUND(L46*11.5/100,' . $precision . ')');
             $sheet->getStyle('L47')->applyFromArray($feeFont);
             $sheet->setCellValue('L48', '=L46+L47');
@@ -216,8 +217,8 @@ class QuotationExporter
      *
      *   pure = budget_all / (1 + fee/100) / 1.07
      *
-     * 10,000 with the standard 11.5% fee gives 8,381.87 -> +963.91 fee -> 9,345.79
-     * net -> +654.21 VAT -> 10,000.00.
+     * 10,000 with the standard 11.5% fee gives 8,381.878379 -> +963.916014 fee ->
+     * 9,345.794393 net -> +654.205608 VAT -> 10,000.000001, which prints 10,000.00.
      */
     public static function pureMedia(array $row, bool $agencyFee = true): float
     {
@@ -237,24 +238,27 @@ class QuotationExporter
         }
 
         $factor = $agencyFee ? 1.115 : 1.0;
-        $base = $target / (1.07 * $factor);
 
-        // Rounding is not neutral here: 10,000 / 1.19305 = 8,381.8753..., and
-        // rounding up gives a document that totals 10,000.01. Pick the two-decimal
-        // value whose whole chain (net -> VAT -> total) actually lands on the target.
-        foreach (array(0, -0.01, 0.01, -0.02, 0.02, -0.03, 0.03) as $delta) {
-            $candidate = round($base + $delta, 2);
-            // Exactly what the sheet computes: fee rounded to satang, net = pure +
-            // fee, VAT rounded to satang, total = net + VAT.
-            $fee = $agencyFee ? round($candidate * 0.115, 2) : 0.0;
-            $net = round($candidate + $fee, 2);
-            $vat = round($net * 0.07, 2);
-            if (abs($net + $vat - $target) < 0.005) {
-                return $candidate;
+        // Six decimals, not two. Rounding the quotient to satang breaks the chain:
+        // 10,000 / 1.19305 = 8,381.878379, and 8,381.88 grows into a document that prints
+        // 10,000.01. Six decimals keep the total where the customer expects it — the cell
+        // format rounds for display, the arithmetic is not touched.
+        return round($target / (1.07 * $factor), 6);
+    }
+
+    /**
+     * 2 when the fee is computed on a figure already exact to the satang, 6 otherwise.
+     */
+    public static function feePrecision(?array $items, float $pureMedia): int
+    {
+        if ($items !== null) {
+            $pureMedia = 0.0;
+            foreach ($items as $item) {
+                $pureMedia += (float) $item['qty'] * (float) $item['unit_price'];
             }
         }
 
-        return round($base, 2);
+        return abs(round($pureMedia, 2) - $pureMedia) < 0.0000005 ? 2 : 6;
     }
 
     /** `<quotation_no>_<project>`, filesystem-safe. */

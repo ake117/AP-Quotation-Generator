@@ -265,7 +265,10 @@ final class QuotationExporterTest extends TestCase
         $files = $this->exporter()->export($row, $dir);
         $text = self::pdfText($files['pdf']);
 
-        $this->assertStringContainsString('8,381.87', $text, 'pure media in the line item');
+        // PURE MEDIA is 10,000 / 1.19305 = 8,381.878379, printed as 8,381.88. Writing it
+        // as a two-decimal 8,381.88 and rounding the fee to satang is what used to push
+        // this document to 10,000.01.
+        $this->assertStringContainsString('8,381.88', $text, 'pure media in the line item');
         $this->assertStringContainsString('963.92', $text, 'agency fee 11.5%');
         $this->assertStringContainsString('9,345.79', $text, 'net');
         $this->assertStringContainsString('654.21', $text, 'VAT 7%');

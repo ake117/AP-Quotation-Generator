@@ -194,11 +194,6 @@ final class QuotationBatch
         // PURE MEDIA comes straight from the share: routing through pureMedia() would
         // hunt for a two-decimal value, and a split document must keep the fraction.
         $doc['media_cost'] = round($amount / (1.07 * ($agencyFee ? 1.115 : 1.0)), 6);
-        // Split documents always carry six decimals and display two — one rule for every
-        // share, so 15,000 over 3 (5,000 each) and 10,000 over 3 (3,333.33 each) travel
-        // the same path.
-        $doc['fee_precision'] = 6;
-
         if (!empty($row['split_periods'][$index])) {
             $doc['period_text'] = (string) $row['split_periods'][$index];
         }
