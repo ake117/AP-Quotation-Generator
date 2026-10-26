@@ -20,7 +20,7 @@
 
 ```
 URL      : http://127.0.0.1:8091/admin/login
-Email    : ake@ewitewit.com   (ROOT)  หรือ akekapon@ewitewit.com (ROOT)
+Email    : ake@ewitewit.com   (ROOT)
 Password : APqt2026!local
 ```
 
@@ -86,12 +86,12 @@ AP_QT_Generator/
 
 Import ต้องใช้ `sql_mode='NO_AUTO_VALUE_ON_ZERO,ALLOW_INVALID_DATES'` เพราะ dump มี `'0000-00-00 00:00:00'`
 
-## Features ที่พัฒนาแล้ว (อัปเดต 26/10/2026)
+## Features ที่พัฒนาแล้ว (อัปเดต 27/10/2026)
 
 - **Excel engine ใหม่** — PHPExcel → PhpSpreadsheet 5.10 ผ่าน compatibility bridge (`libraries/Excel.php`) โค้ด controller เดิมรันได้ไม่ต้องแก้; ติดตั้งด้วย `composer require phpoffice/phpspreadsheet`
 - **รับเฉพาะ .xlsx** — upload validation ปฏิเสธไฟล์อื่น, writer ใช้ Xlsx เท่านั้น
 - **แก้ contact name ได้** — ช่อง "Contact Name" ในหน้า Quotation AP (Load/Save ผ่าน AJAX) → เขียนลง cell **E10** ของไฟล์ export; เก็บใน `quotation_ap_data.contact_name`; endpoint: `GET/POST /admin/quotationAP/edit_contact`
-- **Export เป็น 2 zip** — ① `*.zip` เฉพาะ quotation xlsx (ไฟล์ Mediaplan ถูกตัดออก) ② `*_pdf.zip` เฉพาะ PDF
+- **Export เป็น 2 zip** — ① `*.zip` = quotation xlsx ทุกใบ + `Mediaplan.xlsx` (แผนที่เติมเลข QT/โครงการ/ยอดแบ่งแล้ว พร้อม paste กลับ PO Status) ② `*_pdf.zip` = PDF ทุกใบ
 - **PDF อัตโนมัติ** — ทุก quotation xlsx ถูก convert เป็น PDF ด้วย LibreOffice headless (`soffice --convert-to pdf`) ระหว่าง export
 - **ชื่อไฟล์ ≤ 74 ตัวอักษร** (ไม่รวมนามสกุล) — `sanitize_text()` ใช้ mb_substr นับ Thai chars ถูกต้อง
 - **Quotation render แยกเป็นคลาส** — `libraries/QuotationExporter.php` ทำ template → xlsx → PDF โดยไม่ต้องพึ่ง CodeIgniter/DB/HTTP; controller เหลือแค่เรียกใช้ (โค้ดชุดเดียวกับที่เทสต์ตรวจ)
@@ -100,8 +100,10 @@ Import ต้องใช้ `sql_mode='NO_AUTO_VALUE_ON_ZERO,ALLOW_INVALID_DATE
 - **K24 = PURE MEDIA + Agency Fee + VAT ที่ลงตัวเป็นเลขกลม** — K24 ใช้ค่า PURE MEDIA จาก media plan (คอลัมน์ N) หรือคำนวณจาก `BUDGET ALL` เป็นทศนิยม 6 ตำแหน่ง (ไม่ปัดเป็นสตางค์ก่อน เพราะจะทำให้ยอดรวมเกิน/ขาด 1 สตางค์) แล้ว fee 11.5% + VAT 7% จึงกลับมาเป็นยอดที่ลูกค้าอนุมัติพอดี (ทดสอบ 5,000 / 10,000 / 12,345 / 25,000 / 100,000) — งานที่ไม่มี fee ส่ง `agency_fee => false`
 - **E24** — `Boost post <period>` เมื่อมี period และเหลือแค่ `Boost post` เมื่อไม่มี (ไม่ต่อท้ายด้วย ad format)
 
-### รอ input จากผู้ใช้
-- รูปภาพใหม่สำหรับแนบใน template.xlsx
+### ภาพในใบ quotation
+แอปแทรกภาพ 4 จุด (โลโก้ / ตรา / ลายเซ็น 2 จุด) จากไฟล์ใน
+`code/public_html/upload/quotation/ap/img/` ทุกครั้งที่ export และล้างภาพเดิมที่ฝังใน template ออก
+— ถ้าจะเปลี่ยนภาพ ให้เปลี่ยนไฟล์ใน `img/` ไม่ใช่ใน `template.xlsx` (ภาพใน template จะถูกทับ)
 
 ## สิ่งที่ถูกถอดออก (cleanup เมื่อ 25/09/2026)
 
@@ -186,15 +188,16 @@ N เลข และบันทึกตัวนับครั้งเด�
 `split_quotation_nos` ยังส่งเข้ามาเองได้ถ้าต้องการกำหนดเลขตายตัว และ `split_periods` ใช้แยก
 ช่วงเวลาต่อใบ
 
-> **ข้อจำกัดที่รู้อยู่:** ตาราง `quotation_ap_data` ยังเก็บ 1 แถวต่อ 1 row ของ media plan
-> (คอลัมน์ `quotation_no` เดียว) เลขที่ออกรันตอน export จึงไม่ได้ถูกเก็บย้อนหลัง —
-> export ซ้ำจะได้เลขชุดใหม่ ถ้าต้องการเก็บถาวรต้องมีตารางลูก (documents) เพิ่ม
+**การเก็บเลขที่ออกแล้ว** — ตอน import แถวของ media plan ถูกแตกเป็น 1 ใบ = 1 แถว
+(`QuotationBatch::splitRows`) พร้อม `quotation_no` ของแต่ละใบที่ออกจาก running counter
+แล้วบันทึกครั้งเดียวหลังจบการ import — export จึง render 1:1 ตามแถวในฐานข้อมูล
+และเลขที่ออกไปแล้วถูกเก็บใน `quotation_ap_data.quotation_no` ตั้งแต่ตอน import
 
 **การนำเข้า** — คอลัมน์ `Note` (E) ถูก map เป็น `note` ใน `get_data()` แล้ว (เพิ่มใน
 `$coldata['field']`) จำนวนใบจึงมาจากข้อมูลจริงได้โดยไม่ต้องกรอกมือ
 
-> **ยังค้าง:** หน้า UI ยังไม่มีช่องกรอกจำนวนใบ — จำนวนใบอ่านจาก Note ที่มากับ row อยู่แล้ว
-> แต่การออกเลขรันจริงจาก `quotation_ap_running` ตอน split ยังไม่ได้ต่อ
+> **หมายเหตุ:** ไม่มีช่องกรอกจำนวนใบใน UI โดยตั้งใจ — จำนวนใบอ่านจาก Note ที่มากับ row
+> และตอน import จะแตกแถวพร้อมออกรันต่อเนื่องจาก `quotation_ap_running` แล้ว
 
 ## ดึงข้อมูลจาก Google Sheet โดยตรง (ไม่ต้อง download/upload)
 
@@ -244,7 +247,7 @@ upload/quotation/ap/archive/{folder}_pdf.zip
 ใบเสนอราคาต้องจบที่ PDF ที่ถูกต้อง เทสต์จึงรัน render จริงแล้วตรวจไฟล์ที่ได้:
 
 ```bash
-code/tests/run            # จาก root ของ repo (~4 วินาที)
+code/tests/run            # จาก root ของ repo (~30 วินาที; 52 tests, 269 assertions)
 code/tests/run --testdox  # รับ flag ของ PHPUnit ตามปกติ
 ```
 
@@ -267,6 +270,6 @@ backups/production_clean_15tables_2026-09-25.sql.gz # หลัง cleanup ร�
 - [ ] `quotations.quotation_no` ไม่ normalize (N/A, format ปนกัน), `production_id` เป็น varchar
 - [ ] Charset `utf8` (3-byte) — เก็บ emoji ไม่ได้ ควรรื้อเป็น utf8mb4 ทั้ง schema
 - [ ] `'0000-00-00 00:00:00'` ค้างในข้อมูลบางแถว — ควรแปลงเป็น NULL
-- [ ] MySQL 5.7 (prod) vs 8.4 (local) — รอะไรขึ้นต้องเช็ค sql_mode เสมอ
+- [ ] MySQL 5.7 (prod) vs 8.4 (local) — อะไรขึ้นต้องเช็ค sql_mode เสมอ
 - [ ] ลบไฟล์ใน `_removed_quotation_module/` + frontend controllers เก่าเมื่อยืนยันแล้ว
 - [ ] `agency_fee` ยัง default = เปิด (ตาม media plan ใหม่) — ถ้ามีงานที่ไม่มี fee ต้องส่ง flag ปิดมาจาก importer
