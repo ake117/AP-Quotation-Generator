@@ -196,6 +196,32 @@ N เลข และบันทึกตัวนับครั้งเด�
 > **ยังค้าง:** หน้า UI ยังไม่มีช่องกรอกจำนวนใบ — จำนวนใบอ่านจาก Note ที่มากับ row อยู่แล้ว
 > แต่การออกเลขรันจริงจาก `quotation_ap_running` ตอน split ยังไม่ได้ต่อ
 
+## ดึงข้อมูลจาก Google Sheet โดยตรง (ไม่ต้อง download/upload)
+
+`POST /admin/quotationAP/import_from_google`  (form: `quotation_date=2026-09-25`)
+
+อ่าน tab ของเดือนนั้น (`0926`, `1026`, …) ผ่าน Sheets API → split ตาม ProjectID ใน Note →
+insert ลง `quotation_ap_data` พร้อมเลขรัน → **เขียนเลขกลับลงชีตให้เลย** (แทรกแถวให้ครบทุกใบ)
+แล้วค่อยเรียก export เพื่อสร้างไฟล์ xlsx/PDF ตามปกติ
+
+**ตั้งค่าครั้งเดียว**
+
+1. Google Cloud → เปิด **Google Sheets API** → สร้าง **Service Account** → ดาวน์โหลด JSON key
+2. วางไฟล์เป็น `code/application/config/google-service-account.json`
+   (หรือตั้ง env `APQT_GOOGLE_SA=/path/to/key.json`) — ไฟล์นี้อยู่ใน `.gitignore`
+3. แชร์สเปรดชีตให้ e-mail ของ service account (`...@....iam.gserviceaccount.com`)
+   สิทธิ์ **Editor** (ถ้าให้ Viewer จะ import ได้แต่เขียนเลขกลับไม่ได้)
+4. `config/google.php` ตั้ง spreadsheet id ไว้แล้ว; ปิดการเขียนกลับได้ด้วย
+   `$config['google_write_back'] = false;`
+
+**โครงสร้างโค้ด**
+
+| ไฟล์ | หน้าที่ |
+|---|---|
+| `libraries/GoogleSheetsClient.php` | service-account JWT (openssl) → access token, `getValues`, `updateValues`, `insertRows` — ใช้ curl ล้วน ไม่เพิ่ม dependency |
+| `libraries/SheetTable.php` | แปลง values matrix → rows ตามหัวตาราง (หา header row เอง), เก็บ `_row` ไว้เขียนกลับ, สร้าง A1 range |
+| `QuotationAP::import_from_google()` | ต่อทุกอย่างเข้าด้วยกัน + เขียนเลขกลับจากล่างขึ้นบน |
+
 ## ไฟล์ที่ได้กลับมาหลัง import + export
 
 ```

@@ -488,6 +488,164 @@ class QuotationAP extends MX_Controller
     }
     
     /**
+     * Import the month's quotations straight from the Google Sheet.
+     *
+     * No download, no upload: the tab named after the quotation month (0926, 1026, …) is
+     * read through the Sheets API, split into one row per ProjectID exactly like the file
+     * import does, inserted into the database with consecutive numbers, and the numbers are
+     * written back into the sheet so the team's PO Status file is already up to date.
+     */
+    public function import_from_google()
+    {
+        require_once APPPATH . 'libraries/GoogleSheetsClient.php';
+        require_once APPPATH . 'libraries/SheetTable.php';
+        require_once APPPATH . 'libraries/QuotationBatch.php';
+
+        $this->load->config('google');
+
+        $starttime = microtime(TRUE);
+        $result = array('status' => 'error', 'message' => '', 'process' => '');
+
+        $inpt_quotation_date = date_create($this->input->post('quotation_date'));
+        if (!$inpt_quotation_date) {
+            $result['message'] = 'quotation_date is missing';
+
+            return $this->output->set_content_type('application/json')->set_output(json_encode($result));
+        }
+
+        $quotation_year = (int) date_format($inpt_quotation_date, "Y");
+        $tab = date_format($inpt_quotation_date, "my");     // 0926, 1026, ...
+
+        $fields = array(
+            'PROJECT'       => 'project',
+            'BRIEFNAME'     => 'project_file',
+            'QT NO.'        => 'quotation_no',
+            'AD FORMAT'     => 'ad_format',
+            'BUDGET ALL'    => 'budget_all',
+            'PURE MEDIA'    => 'media_cost',
+            'BG'            => 'bg_key',
+            'PERIOD'        => 'period_text',
+            'NOTE'          => 'note',
+        );
+
+        try {
+            $client = new GoogleSheetsClient($this->config->item('google_service_account_json'));
+            $spreadsheetId = $this->config->item('google_spreadsheet_id');
+
+            $values = $client->getValues($spreadsheetId, "'" . $tab . "'!A1:AZ5000");
+            $table = SheetTable::read($values, $fields, array('PURE MEDIA', 'BG', 'PERIOD', 'NOTE'));
+
+            if (!empty($table['missing'])) {
+                $result['message'] = 'not found column ' . implode(', ', $table['missing']) . ' in tab ' . $tab;
+
+                return $this->output->set_content_type('application/json')->set_output(json_encode($result));
+            }
+
+            // Numbers run on from where the month (or the sheet itself) left off.
+            $running = $this->quotation->get_quotationAP_running_exact($inpt_quotation_date);
+            if ($running === false) {
+                $running = $this->quotation->get_quotationAP_running($inpt_quotation_date);
+                $running = ($running === false) ? 0 : (int) $running;
+            }
+            $running = max($running, QuotationBatch::highestNumber($this->quotation->get_quotation_nos($quotation_year)));
+
+            $data_import = array();
+            $writes = array();
+
+            foreach ($table['rows'] as $row) {
+                $ids = QuotationBatch::projectIds((string) ($row['note'] ?? ''));
+                $count = max(1, count($ids));
+                $issued = QuotationBatch::consecutiveNumbers($quotation_year, $running, $count);
+                $running = $issued['last'];
+
+                $documents = QuotationBatch::splitRows($row, $issued['numbers']);
+                $writes[$row['_row']] = $documents;
+
+                foreach ($documents as $document) {
+                    $data_import[] = $document;
+                }
+            }
+
+            if (empty($data_import)) {
+                $result['message'] = 'no rows found in tab ' . $tab;
+
+                return $this->output->set_content_type('application/json')->set_output(json_encode($result));
+            }
+
+            $this->quotation->insert_data('quotation_ap_data', $data_import);
+            $this->quotation->update_quotationAP_running($inpt_quotation_date, $running);
+
+            $result['process'] .= $this->showtime($starttime, "Insert: ");
+            $result['rows'] = count($data_import);
+
+            if ($this->config->item('google_write_back')) {
+                $result['write_back'] = $this->write_numbers_back($client, $spreadsheetId, $tab, $table, $writes);
+            }
+
+            $result['status'] = 'success';
+            $result['message'] = count($data_import) . ' quotations from tab ' . $tab;
+        } catch (Exception $e) {
+            $result['message'] = $e->getMessage();
+        }
+
+        return $this->output->set_content_type('application/json')->set_output(json_encode($result));
+    }
+
+    /**
+     * Put the numbers back where the rows came from: insert a row for every extra document
+     * and write the per-document columns. Runs bottom-up so an inserted row never shifts a
+     * row that is still waiting.
+     *
+     * @return array<int, string> what happened, per sheet row
+     */
+    private function write_numbers_back($client, $spreadsheetId, $tab, array $table, array $writes)
+    {
+        $perDocument = array(
+            'quotation_no' => 'QT NO.',
+            'project'      => 'PROJECT',
+            'project_file' => 'BRIEFNAME',
+            'note'         => 'NOTE',
+            'budget_all'   => 'BUDGET ALL',
+            'media_cost'   => 'PURE MEDIA',
+        );
+
+        $log = array();
+
+        try {
+            $sheetId = $client->sheetId($spreadsheetId, $tab);
+        } catch (Exception $e) {
+            return array('skipped: ' . $e->getMessage());
+        }
+
+        krsort($writes);
+
+        foreach ($writes as $sheetRow => $documents) {
+            $extra = count($documents) - 1;
+            if ($extra > 0) {
+                $client->insertRows($spreadsheetId, $sheetId, $sheetRow, $extra);
+            }
+
+            foreach ($perDocument as $key => $header) {
+                if (!isset($table['positions'][$header]) || $table['positions'][$header] === 999) {
+                    continue;
+                }
+
+                $values = array();
+                foreach ($documents as $document) {
+                    $values[] = array(isset($document[$key]) ? $document[$key] : '');
+                }
+
+                $range = SheetTable::columnRange($tab, (int) $table['positions'][$header], $sheetRow, $sheetRow + $extra);
+                $client->updateValues($spreadsheetId, $range, $values);
+            }
+
+            $log[] = 'row ' . $sheetRow . ': ' . count($documents) . ' document(s)';
+        }
+
+        return $log;
+    }
+
+    /**
      * Convert an .xlsx file to PDF using LibreOffice headless.
      * The PDF is written next to the source file. Returns true on success.
      */

@@ -10,6 +10,8 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/../application/libraries/QuotationExporter.php';
 require_once __DIR__ . '/../application/libraries/QuotationBatch.php';
 require_once __DIR__ . '/../application/libraries/MediaPlanWriter.php';
+require_once __DIR__ . '/../application/libraries/SheetTable.php';
+require_once __DIR__ . '/../application/libraries/GoogleSheetsClient.php';
 
 define('CODEPATH', dirname(__DIR__));
 define('PUBLICPATH', CODEPATH . '/public_html');
