@@ -147,7 +147,8 @@ class QuotationExporter
             // The fee is rounded to satang before it is added: otherwise the net
             // carries 9,345.78505 and the printed lines (9,345.79 + 654.21) do not
             // add up to the printed total.
-            $sheet->setCellValue('L47', '=ROUND(L46*11.5/100,2)');
+            $precision = (int) ($row['fee_precision'] ?? 2);
+            $sheet->setCellValue('L47', '=ROUND(L46*11.5/100,' . $precision . ')');
             $sheet->getStyle('L47')->applyFromArray($feeFont);
             $sheet->setCellValue('L48', '=L46+L47');
         } else {
@@ -222,7 +223,9 @@ class QuotationExporter
     {
         $media = (float) ($row['media_cost'] ?? 0);
         if ($media > 0) {
-            return round($media, 2);
+            // Six decimals: a split document's pure media carries a fraction on purpose
+            // (see QuotationBatch), and rounding it here would lose a satang per document.
+            return round($media, 6);
         }
 
         $target = (float) ($row['budget_all'] ?? 0);
@@ -252,43 +255,6 @@ class QuotationExporter
         }
 
         return round($base, 2);
-    }
-
-    /** What the sheet prints as the total for a given pure media figure. */
-    public static function totalFor(float $pureMedia, bool $agencyFee = true): float
-    {
-        $fee = $agencyFee ? round($pureMedia * 0.115, 2) : 0.0;
-        $net = round($pureMedia + $fee, 2);
-
-        return round($net + round($net * 0.07, 2), 2);
-    }
-
-    /**
-     * The nearest total the chain can actually print.
-     *
-     * Not every gross is reachable: the fee and VAT are each rounded to satang, so
-     * 3,333.33 cannot be produced (the closest are 3,333.32 and 3,333.34). The search
-     * takes the target itself, then walks outwards preferring the amount above it, so a
-     * share never lands lower than the figure that was promised. Splitting a budget into
-     * equal documents has to know this, otherwise the documents add up to a total the
-     * customer never sees.
-     */
-    public static function reachableTotal(float $target, bool $agencyFee = true): float
-    {
-        for ($step = 0; $step <= 200; $step++) {
-            foreach ($step === 0 ? array(0) : array($step, -$step) as $sign) {
-                $gross = round($target + $sign / 100, 2);
-                if ($gross <= 0) {
-                    continue;
-                }
-                $pure = self::pureMedia(array('budget_all' => $gross, 'media_cost' => 0), $agencyFee);
-                if (abs(self::totalFor($pure, $agencyFee) - $gross) < 0.005) {
-                    return $gross;
-                }
-            }
-        }
-
-        return round($target, 2);
     }
 
     /** `<quotation_no>_<project>`, filesystem-safe. */
