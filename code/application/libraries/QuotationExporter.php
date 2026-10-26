@@ -98,15 +98,38 @@ class QuotationExporter
         $sheet->setCellValue('E12', $row['company_address']);
 
         $sheet->setCellValue('E22', $detail);
-        $sheet->setCellValue('E23', $row['project']);
-        $sheet->setCellValue('E24', $detail_sub);
+
+        // One media item per two rows: a name row (D = number, E = project) and a
+        // detail row (E = description, J = qty, K = unit price, L = amount).
+        $items = (isset($row['items']) && is_array($row['items']) && $row['items']) ? $row['items'] : null;
+        if ($items === null) {
+            $sheet->setCellValue('E23', $row['project']);
+            $sheet->setCellValue('E24', $detail_sub);
+        } else {
+            $nameRow = 23;
+            foreach (array_values($items) as $index => $item) {
+                $detailRow = $nameRow + 1;
+                $sheet->setCellValue('D' . $nameRow, $index + 1);
+                $sheet->setCellValue('E' . $nameRow, $item['project']);
+                $sheet->setCellValue('E' . $detailRow, $item['detail']);
+                $sheet->setCellValue('J' . $detailRow, $item['qty']);
+                $sheet->setCellValue('K' . $detailRow, $item['unit_price']);
+                $sheet->setCellValue('L' . $detailRow, '=K' . $detailRow . '*J' . $detailRow);
+                $nameRow += 2;
+            }
+        }
 
         // K24 carries PURE MEDIA — the net-of-everything media cost. The media plan
         // computes it so the chain lands on the round budget the client approved:
         //   Budget All -> /1.07 = Budget Ex VAT -> /1.115 = Pure media (N column)
         // then  Pure media + 11.5% fee + 7% VAT  =  Budget All  (a round number)
-        $pureMedia = self::pureMedia($row, $agencyFee);
-        $sheet->setCellValue('K24', $pureMedia);
+        if ($items === null) {
+            // A single-item row carries the whole media cost in K24; with several
+            // items the subtotal is the sum of the line amounts, and writing K24
+            // would overwrite the first item's unit price.
+            $pureMedia = self::pureMedia($row, $agencyFee);
+            $sheet->setCellValue('K24', $pureMedia);
+        }
 
         $feeFont = array(
             'font' => array(

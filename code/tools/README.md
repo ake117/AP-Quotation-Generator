@@ -41,6 +41,27 @@ compares it against the document a human approved, which lives in
 When a test disagrees with the reference, **the reference wins** — a difference is a
 finding, never a reason to edit the reference or loosen the assertion.
 
+## Several media items in one quotation
+
+Pass the items in the row:
+
+```php
+'items' => [
+    ['project' => 'Apitown Chonburi - Bangsaen', 'detail' => 'Boost post 1 - 11 Sep 2026', 'qty' => 2, 'unit_price' => 2500.00],
+    ['project' => 'Pleno Rama 9 - Krungthepkreetha 4', 'detail' => 'Boost post 1 - 11 Sep 2026', 'qty' => 1, 'unit_price' => 3381.87],
+],
+```
+
+Each item takes two rows from 23 down — a name row (`D` = number, `E` = project) and a
+detail row (`E` = description, `J` = qty, `K` = unit price, `L` = `=K<row>*J<row>`).
+Two rules the tests pin:
+
+- **K24 must stay untouched when items are present.** The subtotal is the sum of the
+  line amounts; writing K24 would overwrite the first item's unit price.
+- **Rows below the last item stay empty.**
+
+Without `items` the exporter renders the single-item layout exactly as before.
+
 ## K24 carries PURE MEDIA, not the budget
 
 The media plan already does the arithmetic — the columns are formulas:
