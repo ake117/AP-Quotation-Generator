@@ -162,7 +162,8 @@ final class ProjectDirectory
     /** The project name for an ID, or null when the sheet does not list it. */
     public static function name(string $projectId): ?string
     {
-        $id = trim($projectId);
+        // IDs compare case-insensitively: AP0001 and ap0001 are the same site.
+        $id = strtoupper(trim($projectId));
 
         return self::NAMES[$id] ?? null;
     }

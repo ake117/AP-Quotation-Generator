@@ -53,7 +53,15 @@ final class QuotationBatch
     public function export(array $row, string $outDir): array
     {
         $ids = self::projectIds((string) ($row['note'] ?? ''));
-        $amounts = $this->shares($row, $this->documentCount($row));
+        $count = $this->documentCount($row);
+
+        if ($count === 1) {
+            // No split: the row keeps its own money path (PURE MEDIA is searched so the
+            // total prints round) and only borrows the name of its ProjectID.
+            return array($this->exporter->export($this->withProjectName($row, $ids[0] ?? null), $outDir));
+        }
+
+        $amounts = $this->shares($row, $count);
 
         $documents = array();
         foreach ($amounts as $index => $amount) {
@@ -90,17 +98,23 @@ final class QuotationBatch
 
     /**
      * ProjectIDs out of the note column: "40194, 40112", "40194/40112" and one ID per
-     * line all mean two documents. Everything that is not a digit counts as a separator,
-     * which also absorbs stray spaces and trailing slashes.
+     * line all mean two documents.
+     *
+     * An ID is at most three letters followed by at least two digits, optionally with
+     * more letters or digits after them — 40194, AP0001, AC0003. Commas, slashes, line
+     * breaks and spaces separate them; any other word in the note ("Boost post") simply
+     * does not look like an ID and is ignored. IDs compare case-insensitively, so the
+     * same ID written twice is still one document.
      *
      * @return array<int, string>
      */
     public static function projectIds(string $note): array
     {
-        $ids = array();
+        preg_match_all('/[A-Za-z]{0,3}[0-9]{2,}[A-Za-z0-9]*/', $note, $matches);
 
-        foreach (preg_split('/[^0-9]+/', $note) as $candidate) {
-            $candidate = trim($candidate);
+        $ids = array();
+        foreach ($matches[0] as $candidate) {
+            $candidate = strtoupper(trim($candidate));
             if ($candidate !== '' && !in_array($candidate, $ids, true)) {
                 $ids[] = $candidate;
             }
@@ -180,10 +194,10 @@ final class QuotationBatch
         // PURE MEDIA comes straight from the share: routing through pureMedia() would
         // hunt for a two-decimal value, and a split document must keep the fraction.
         $doc['media_cost'] = round($amount / (1.07 * ($agencyFee ? 1.115 : 1.0)), 6);
-        // Six decimals only when the share actually carries a fraction: a document that
-        // lands on a whole satang must keep the two-decimal fee, or its printed total
-        // drifts off the round figure the customer approved.
-        $doc['fee_precision'] = (round($amount, 2) == $amount) ? 2 : 6;
+        // Split documents always carry six decimals and display two — one rule for every
+        // share, so 15,000 over 3 (5,000 each) and 10,000 over 3 (3,333.33 each) travel
+        // the same path.
+        $doc['fee_precision'] = 6;
 
         if (!empty($row['split_periods'][$index])) {
             $doc['period_text'] = (string) $row['split_periods'][$index];
@@ -192,9 +206,27 @@ final class QuotationBatch
         return $doc;
     }
 
+    /** The row with the project name its ProjectID gives it, when the ID is known. */
+    private function withProjectName(array $row, ?string $projectId): array
+    {
+        if ($projectId === null) {
+            return $row;
+        }
+
+        $name = $this->projectName($projectId, $row);
+        if ($name === (string) $row['project']) {
+            return $row;
+        }
+
+        $row['project'] = $name;
+        $row['project_file'] = QuotationExporter::sanitizeText($name, '-');
+
+        return $row;
+    }
+
     private function projectName(string $projectId, array $row): string
     {
-        $name = $this->names[$projectId] ?? ProjectDirectory::name($projectId);
+        $name = $this->names[strtoupper($projectId)] ?? ProjectDirectory::name($projectId);
 
         // An unknown ID is a finding, not a reason to invent a name: keep the row's own
         // project so the mistake is visible instead of quietly quoting another project.

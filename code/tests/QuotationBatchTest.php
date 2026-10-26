@@ -74,7 +74,12 @@ final class QuotationBatchTest extends TestCase
 
     public function test_a_note_with_one_project_id_is_one_document(): void
     {
-        $docs = $this->batch()->export($this->row(array('budget_all' => 5000)), $this->outDir());
+        // Column C can be stale; the ID decides the name even when no split happens.
+        $docs = $this->batch()->export($this->row(array(
+            'budget_all' => 5000,
+            'project'    => 'WRONG PROJECT',
+            'note'       => '40194',
+        )), $this->outDir());
 
         $this->assertCount(1, $docs);
         $this->assertSame(5000.00, self::printedTotal($docs[0]['pdf']));
@@ -106,6 +111,13 @@ final class QuotationBatchTest extends TestCase
         // The same ID twice is one document, not two.
         $this->assertSame($expected, QuotationBatch::projectIds('40194, 40112, 40194'));
         $this->assertSame(array(), QuotationBatch::projectIds(''));
+
+        // IDs can carry letters, and compare case-insensitively.
+        $this->assertSame(array('AP0001', 'AC0003'), QuotationBatch::projectIds('AP0001, AC0003'));
+        $this->assertSame(array('AP0001'), QuotationBatch::projectIds('ap0001'));
+        $this->assertSame(array('AP0001', '40194'), QuotationBatch::projectIds('AP0001/40194'));
+        // Words that are not IDs are ignored, not turned into documents.
+        $this->assertSame(array(), QuotationBatch::projectIds('Boost post'));
     }
 
     public function test_an_unknown_id_keeps_the_rows_project_instead_of_inventing_one(): void
@@ -137,6 +149,40 @@ final class QuotationBatchTest extends TestCase
         }
 
         $this->assertEqualsWithDelta(10000.00, $carried, 0.005, 'the three documents must carry the whole budget');
+    }
+
+    public function test_a_share_that_lands_on_a_satang_still_keeps_six_decimals(): void
+    {
+        $docs = $this->batch()->export($this->row(array(
+            'note'       => '40194/40112/70105',
+            'budget_all' => 15000,
+        )), $this->outDir());
+
+        $this->assertCount(3, $docs);
+        $carried = 0.0;
+        foreach ($docs as $doc) {
+            $this->assertSame(5000.00, self::printedTotal($doc['pdf']));
+            $carried += self::carriedTotal($doc['xlsx']);
+        }
+
+        $this->assertEqualsWithDelta(15000.00, $carried, 0.005);
+    }
+
+    public function test_an_id_with_letters_can_name_a_project(): void
+    {
+        $batch = new QuotationBatch(
+            new QuotationExporter(TEMPLATE_PATH, IMAGE_DIR),
+            array('AP0001' => 'Aspire Onnut Station', 'AC0003' => 'Aspire Sukhumvit - Rama 4')
+        );
+
+        $docs = $batch->export($this->row(array(
+            'note'       => 'ap0001/ac0003',
+            'budget_all' => 10000,
+        )), $this->outDir());
+
+        $this->assertCount(2, $docs);
+        $this->assertStringContainsString('Aspire Onnut Station', self::pdfText($docs[0]['pdf']));
+        $this->assertStringContainsString('Aspire Sukhumvit - Rama 4', self::pdfText($docs[1]['pdf']));
     }
 
     public function test_unequal_shares_can_be_given(): void
