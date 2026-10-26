@@ -399,9 +399,33 @@ class QuotationAP extends MX_Controller
             // QuotationBatch decides; the renderer still writes a single quotation.
             $batch = new QuotationBatch($exporter);
 
+            // Numbers are counted for the month the quotations belong to; the rows carry
+            // their own date, so the first one speaks for the selection.
+            $firstRow = reset($quotation);
+            $dateSource = is_array($firstRow) && !empty($firstRow['quotation_date'])
+                ? $firstRow['quotation_date']
+                : date('Y-m-d');
+            $quotation_date = date_create($dateSource);
+
+            // A split row issues several documents, so it needs several numbers. They run
+            // on from the counter the import left behind (2026/1591, 2026/1592, …) and the
+            // counter is saved once, after the whole export, so a failure part-way through
+            // does not burn numbers that never printed.
+            $running = $this->quotation->get_quotationAP_running($quotation_date);
+            $running = ($running === false) ? 0 : (int) $running;
+            $year = (int) date_format($quotation_date, 'Y');
+
             foreach ($quotation as $value) {
+                $count = $batch->documentCount($value);
+                if ($count > 1 && empty($value['split_quotation_nos'])) {
+                    $issued = QuotationBatch::consecutiveNumbers($year, $running, $count);
+                    $value['split_quotation_nos'] = $issued['numbers'];
+                    $running = $issued['last'];
+                }
                 $batch->export($value, $filepath);
             }
+
+            $this->quotation->update_quotationAP_running($quotation_date, $running);
         }
     }
     

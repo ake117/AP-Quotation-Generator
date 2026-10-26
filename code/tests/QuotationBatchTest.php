@@ -249,6 +249,18 @@ final class QuotationBatchTest extends TestCase
         $this->assertSame('Pleno Town Petchkasem 81', QuotationBatch::withProject('', '', 'Pleno Town Petchkasem 81'));
     }
 
+    public function test_split_numbers_run_on_from_the_last_one_used(): void
+    {
+        $issued = QuotationBatch::consecutiveNumbers(2026, 1590, 3);
+
+        $this->assertSame(array('2026/1591', '2026/1592', '2026/1593'), $issued['numbers']);
+        $this->assertSame(1593, $issued['last']);
+
+        // Four digits until the sequence outgrows them, then it simply keeps going.
+        $this->assertSame(array('2026/10000'), QuotationBatch::consecutiveNumbers(2026, 9999, 1)['numbers']);
+        $this->assertSame(array(), QuotationBatch::consecutiveNumbers(2026, 10, 0)['numbers']);
+    }
+
     // ------------------------------------------------------- merge still wins
 
     public function test_a_merged_row_is_one_document_holding_every_item(): void

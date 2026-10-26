@@ -145,6 +145,27 @@ final class QuotationBatch
     }
 
     /**
+     * The numbers a split takes, run on from the last one used: 2026/1591, 2026/1592, …
+     *
+     * Same shape the import writes (year + four digits, growing past 9999 without
+     * complaint), so a document issued from a split looks like every other document.
+     *
+     * @return array{numbers: array<int, string>, last: int}
+     */
+    public static function consecutiveNumbers(int $year, int $lastRunning, int $count): array
+    {
+        $numbers = array();
+        $running = max(0, $lastRunning);
+
+        for ($index = 0; $index < max(0, $count); $index++) {
+            $running++;
+            $numbers[] = $year . '/' . str_pad((string) $running, 4, '0', STR_PAD_LEFT);
+        }
+
+        return array('numbers' => $numbers, 'last' => $running);
+    }
+
+    /**
      * Explicit amounts win — unequal splits are supported — otherwise the budget is
      * shared equally.
      *
