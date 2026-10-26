@@ -8,17 +8,21 @@ The quotation pipeline ends at a PDF, so its gate runs the real render: template
 | Tool | Why | This machine |
 |---|---|---|
 | PHP ≥ 8.1 | PhpSpreadsheet 5.x | 8.5.4 |
-| PHPUnit 12 (phar) | the runner — not committed (6 MB binary) | `tools/phpunit.phar` |
+| PHPUnit 12 (phar) | the runner — committed on purpose (see below) | `tools/phpunit.phar` |
 | `soffice` (LibreOffice) | `.xlsx` → `.pdf` | 26.2.6.3 |
 | `pdftotext` (poppler-utils) | read the PDF back | installed |
 
 ## Run the gate
 
 ```bash
-cd code
-./tools/install-phpunit.sh          # once, downloads the phar
-php tools/phpunit.phar -c phpunit.xml --no-coverage
+code/tests/run                 # from the repository root
+code/tests/run --testdox       # any PHPUnit flag
 ```
+
+The 6 MB phar is committed even though binaries usually do not belong in git: the gate
+runs inside a DaCode sandbox where `$HOME` is hidden and the network is off, and a
+worktree only contains tracked files. Committing it keeps the gate runnable everywhere
+with no setup. `tools/install-phpunit.sh` re-downloads it if it is ever missing.
 
 Exit code 0 means every quotation assertion holds. That is the command a DaCode trial
 is gated on.

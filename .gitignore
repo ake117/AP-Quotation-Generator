@@ -24,6 +24,6 @@ exported_*/
 !exported_from original system_20260925/
 !exported_from original system_20260925/**
 
-# Test tooling
-code/tools/phpunit.phar
+# Test tooling (the phar is committed on purpose: a DaCode worktree only contains
+# tracked files, and the gate runs inside a sandbox with no network to download it)
 code/.phpunit.cache/
