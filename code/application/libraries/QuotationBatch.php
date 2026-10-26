@@ -185,7 +185,13 @@ final class QuotationBatch
 
         if ($projectId !== null) {
             $doc['project'] = $this->projectName($projectId, $row);
-            $doc['project_file'] = QuotationExporter::sanitizeText($doc['project'], '-');
+            // The document is named the way the team names it by hand: the brief from
+            // column D with this document's project (column C of its ID) on the end.
+            $doc['project_file'] = self::withProject(
+                (string) ($row['project_file'] ?? ''),
+                (string) ($row['project'] ?? ''),
+                $doc['project']
+            );
         }
 
         $doc['quotation_no'] = self::quotationNo($row, $index);
@@ -199,6 +205,38 @@ final class QuotationBatch
         }
 
         return $doc;
+    }
+
+    /**
+     * Brief name + the document's own project.
+     *
+     * The September plan shows the shape the team wants: rows 51 and 52 both read
+     * "ทาวน์โฮม และ บ้านแฝด โซน เพชรเกษม-บางแค_<project>", differing only in the project the
+     * row belongs to. So when the brief already names the row's project, that project is
+     * swapped for this document's; when the brief carries no project, one is appended.
+     */
+    public static function withProject(string $brief, string $rowProject, string $project): string
+    {
+        $brief = trim($brief);
+        $project = trim($project);
+
+        if ($project === '') {
+            return $brief;
+        }
+        if ($brief === '') {
+            return $project;
+        }
+
+        $rowProject = trim($rowProject);
+        if ($rowProject !== '' && $rowProject !== $project) {
+            $position = mb_strpos($brief, $rowProject);
+            if ($position !== false) {
+                return mb_substr($brief, 0, $position) . $project
+                    . mb_substr($brief, $position + mb_strlen($rowProject));
+            }
+        }
+
+        return mb_strpos($brief, $project) !== false ? $brief : $brief . '_' . $project;
     }
 
     /** The row with the project name its ProjectID gives it, when the ID is known. */

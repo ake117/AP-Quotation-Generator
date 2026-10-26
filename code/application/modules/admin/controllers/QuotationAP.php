@@ -250,7 +250,8 @@ class QuotationAP extends MX_Controller
             'BUDGET ALL'    => 'budget_all',
             'PURE MEDIA'    => 'media_cost',
             'BG'            => 'bg_key',
-            'PERIOD'        => 'period_text'
+            'PERIOD'        => 'period_text',
+            'NOTE'          => 'note'
         );        
         $result = $this->import_quotationAP('file_quotation_data', $filepath, $media_plan_worksheet, $coldata, $starttime, $result, $inpt_quotation_date, $quotation_running);
         

@@ -209,6 +209,46 @@ final class QuotationBatchTest extends TestCase
         }
     }
 
+    // ------------------------------------------------------- naming from B + C
+
+    public function test_a_split_document_is_named_brief_name_plus_its_own_project(): void
+    {
+        // Rows 51 and 52 of the September plan: one brief, two projects, 5,000 each.
+        $docs = $this->batch()->export($this->row(array(
+            'project'      => 'Pleno Petchkasem 91',
+            'project_file' => 'ทาวน์โฮม และ บ้านแฝด โซน เพชรเกษม-บางแค_Pleno Petchkasem 91',
+            'note'         => '40144/70122',
+            'budget_all'   => 10000,
+            'split_quotation_nos' => array('2026/1591', '2026/1592'),
+        )), $this->outDir());
+
+        $this->assertCount(2, $docs);
+        $first = basename($docs[0]['xlsx']);
+        $second = basename($docs[1]['xlsx']);
+
+        $this->assertStringContainsString('Pleno-Petchkasem-91', $first);
+        $this->assertStringContainsString('Pleno-Town-Petchkasem-81', $second);
+        // The brief survives, and the row's own project is not repeated in the second one.
+        $this->assertStringContainsString('เพชรเกษม-บางแค', $second);
+        $this->assertStringNotContainsString('Pleno-Petchkasem-91_Pleno-Town', $second);
+        $this->assertSame(5000.00, self::printedTotal($docs[0]['pdf']));
+        $this->assertSame(5000.00, self::printedTotal($docs[1]['pdf']));
+    }
+
+    public function test_a_brief_name_without_a_project_gets_one_appended(): void
+    {
+        $this->assertSame(
+            'โชคทันใจ_Pleno Petchkasem 91',
+            QuotationBatch::withProject('โชคทันใจ', 'Pleno Petchkasem 91', 'Pleno Petchkasem 91')
+        );
+        $this->assertSame(
+            'โชคทันใจ_Pleno Town Petchkasem 81',
+            QuotationBatch::withProject('โชคทันใจ', 'Pleno Petchkasem 91', 'Pleno Town Petchkasem 81')
+        );
+        // An empty brief falls back to the project alone.
+        $this->assertSame('Pleno Town Petchkasem 81', QuotationBatch::withProject('', '', 'Pleno Town Petchkasem 81'));
+    }
+
     // ------------------------------------------------------- merge still wins
 
     public function test_a_merged_row_is_one_document_holding_every_item(): void
