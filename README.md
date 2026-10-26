@@ -95,7 +95,8 @@ Import ต้องใช้ `sql_mode='NO_AUTO_VALUE_ON_ZERO,ALLOW_INVALID_DATE
 - **PDF อัตโนมัติ** — ทุก quotation xlsx ถูก convert เป็น PDF ด้วย LibreOffice headless (`soffice --convert-to pdf`) ระหว่าง export
 - **ชื่อไฟล์ ≤ 74 ตัวอักษร** (ไม่รวมนามสกุล) — `sanitize_text()` ใช้ mb_substr นับ Thai chars ถูกต้อง
 - **Quotation render แยกเป็นคลาส** — `libraries/QuotationExporter.php` ทำ template → xlsx → PDF โดยไม่ต้องพึ่ง CodeIgniter/DB/HTTP; controller เหลือแค่เรียกใช้ (โค้ดชุดเดียวกับที่เทสต์ตรวจ)
-- **หลายรายการในใบเดียว** — ส่ง `items` array เข้ามา แต่ละ item ใช้ 2 แถวจากแถว 23 ลงไป (แถวชื่อ: `D` เลขที่, `E` โครงการ · แถวรายละเอียด: `E` รายการ, `J` จำนวน, `K` ราคา/หน่วย, `L` สูตรจำนวนเงิน); เมื่อมี `items` ต้องไม่เขียน `K24` เพราะจะทับราคาของรายการแรก
+- **1 แถว → หลายใบ (split)** — `QuotationBatch` แบ่งเงินเท่ากันเป็น N ใบ (`split_into` > 1) โดยระบุเลขใบต่อใบได้ (`split_quotation_nos`) และช่วงเวลาแยกต่อใบได้ (`split_periods`) — กรณีที่ใช้บ่อยที่สุด
+- **หลาย row → 1 ใบ (merge)** — ส่ง `items` array เข้ามา แต่ละ item ใช้ 2 แถวจากแถว 23 ลงไป (แถวชื่อ: `D` เลขที่, `E` โครงการ · แถวรายละเอียด: `E` รายการ, `J` จำนวน, `K` ราคา/หน่วย, `L` สูตรจำนวนเงิน); เมื่อมี `items` ต้องไม่เขียน `K24` เพราะจะทับราคาของรายการแรก — **ถ้ามี `items` จะไม่ split** เพราะจะทำให้ยอดรวมของใบเพี้ยน
 - **K24 = PURE MEDIA + Agency Fee + VAT ที่ลงตัวเป็นเลขกลม** — K24 ใช้ค่า PURE MEDIA จาก media plan (คอลัมน์ N) หรือคำนวณจาก `BUDGET ALL`; Agency Fee 11.5% ปัดเป็นสตางค์ก่อนบวกเข้า net; ผลรวมจึงกลับมาเป็นยอดที่ลูกค้าอนุมัติพอดี (ทดสอบ 5,000 / 10,000 / 12,345 / 25,000 / 100,000) — งานที่ไม่มี fee ส่ง `agency_fee => false`
 - **E24** — `Boost post <period>` เมื่อมี period และเหลือแค่ `Boost post` เมื่อไม่มี (ไม่ต่อท้ายด้วย ad format)
 
@@ -108,6 +109,23 @@ Import ต้องใช้ `sql_mode='NO_AUTO_VALUE_ON_ZERO,ALLOW_INVALID_DATE
 - **ไฟล์**: controllers/views ของ Estimated + Production Cost ย้ายไป `modules/admin/_removed_quotation_module/` (รอลบถาวร)
 - **Frontend CMS เก่า** (Booking, Agents, Magazine, Signup ฯลฯ) ยังอยู่ใน `application/controllers/` — ไม่ได้ใช้ แต่ยังไม่ได้ลบ
 
+## การแบ่งหนึ่งแถวเป็นหลายใบ (split)
+
+`QuotationBatch::export()` รับหนึ่ง row แล้วคืนรายการเอกสาร:
+
+| ค่าใน row | ผลลัพธ์ |
+|---|---|
+| มี `items` | **1 ใบ** ที่รวมทุกรายการ (merge ชนะ split เสมอ) |
+| `split_into` = 1 หรือไม่ระบุ | 1 ใบ |
+| `split_into` = N | **N ใบ** แบ่งเงินเท่ากัน |
+
+- **เศษสตางค์อยู่ใบสุดท้าย** และยอดทุกใบรวมกันได้เท่า `budget_all` เดิมเสมอ
+- **ใบที่แบ่งได้ไม่ลงตัวจะถูกปรับขึ้นเป็นยอดที่พิมพ์ได้จริง** — เช่น 10,000 ÷ 3 ได้ 3,333.34 / 3,333.34 / 3,333.32 เพราะ 3,333.33 เป็นยอดที่คำนวณ fee 11.5% + VAT 7% แล้วพิมพ์ไม่ได้ (fee กับ VAT ปัดเป็นสตางค์แยกกัน)
+- เลขใบ: ถ้าไม่ส่ง `split_quotation_nos` ระบบต่อท้าย `-1`, `-2`, … ให้ไฟล์ไม่ชนกัน (ในระบบจริงควรออกเลขรันจริงจาก `quotation_ap_running`)
+- เวลา (K): ถ้าส่ง `split_periods` มา ใบที่ i จะใช้ช่วงของตัวเอง ไม่งั้นใช้ period ของ row
+
+> **ยังค้าง:** หน้า UI ยังไม่มีช่องให้ระบุจำนวนใบต่อแถว — ตอนนี้ `split_into` ต้องมาจากข้อมูลที่ส่งเข้า `get_data()` ก่อน
+
 ## Tests (gate)
 
 ใบเสนอราคาต้องจบที่ PDF ที่ถูกต้อง เทสต์จึงรัน render จริงแล้วตรวจไฟล์ที่ได้:
@@ -117,7 +135,7 @@ code/tests/run            # จาก root ของ repo (~4 วินาที
 code/tests/run --testdox  # รับ flag ของ PHPUnit ตามปกติ
 ```
 
-- ครอบ: ข้อมูลลูกค้า, เลขที่ใบ/Job No, PURE MEDIA, Agency Fee, VAT, ยอดรวมเลขกลม, ข้อความใน PDF, จำนวนเงินเป็นตัวอักษร, ชื่อไฟล์, รายการ E24, หลายรายการในใบเดียว
+- ครอบ: ข้อมูลลูกค้า, เลขที่ใบ/Job No, PURE MEDIA, Agency Fee, VAT, ยอดรวมเลขกลม, ข้อความใน PDF, จำนวนเงินเป็นตัวอักษร, ชื่อไฟล์, รายการ E24, หลายรายการในใบเดียว (merge), การแตกหนึ่งแถวเป็นหลายใบ (split), การปัดเศษเงินตอน split
 - Golden reference: 13 ใบใน `exported_from original system_20260925/` — ถ้าเทสต์ขัดกับ reference ถือว่า reference ถูก
 - รันใน sandbox ได้ (ไม่พึ่ง `$HOME` หรือเน็ต) เพราะ `phpunit.phar` ถูก commit ไว้ใน `code/tools/`
 

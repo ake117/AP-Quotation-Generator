@@ -39,6 +39,11 @@ compares it against the document a human approved, which lives in
 - the item line reads `Boost post <period>`, or just `Boost post` without a period
 - the file name is filesystem-safe
 
+`tests/QuotationBatchTest.php` covers how a row becomes documents: one row without a
+split, a merged row (several items on one quotation), a row split into equal documents,
+the remainder landing on the last one, per-document numbers and media periods, and the
+arithmetic that keeps the parts adding up to the approved budget.
+
 `tests/MultiItemQuotationTest.php` states the layout for several items before the
 implementation existed — two rows per item from 23 down, K24 untouched, rows below the
 last item empty, and the PDF listing every line.

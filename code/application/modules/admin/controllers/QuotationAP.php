@@ -366,6 +366,7 @@ class QuotationAP extends MX_Controller
     public function export_quotationAP($filepath='')
     {
         require_once APPPATH . 'libraries/QuotationExporter.php';
+        require_once APPPATH . 'libraries/QuotationBatch.php';
 
         $root = realpath(dirname(__FILE__).'/../../../..');
         $template = $root.'/public_html/upload/quotation/ap/template/template.xlsx';
@@ -392,8 +393,13 @@ class QuotationAP extends MX_Controller
                 $root.'/public_html/upload/quotation/ap/img/'
             );
 
+            // One plan row can become several documents (the usual case: one budget
+            // line split into equal documents) or one document holding several items.
+            // QuotationBatch decides; the renderer still writes a single quotation.
+            $batch = new QuotationBatch($exporter);
+
             foreach ($quotation as $value) {
-                $exporter->export($value, $filepath);
+                $batch->export($value, $filepath);
             }
         }
     }
