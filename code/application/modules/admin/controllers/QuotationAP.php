@@ -16,7 +16,7 @@ class QuotationAP extends MX_Controller
 
     public function index()
     {
-        $template = 'index.tpl';        
+        $template = 'quotationAP/index.tpl';
         $quotation_doc = $this->quotation->get_quotationAP_doc();        
         $this->smarty->assign('quotation_doc', $quotation_doc);        
         $this->smarty->view_admin( $template );
