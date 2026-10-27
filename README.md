@@ -11,7 +11,7 @@
 | Repo | `ake117/AP-Quotation-Generator` (private, branch `main`; เดิมชื่อ `AP_Quotation_by_Chat`) |
 | Local path | `/home/ake/AI_Projects/AP_QT_Generator` |
 | Framework | CodeIgniter **3.1.13** + Smarty template + AdminLTE 2.4 (skin ต่อ account) + PhpSpreadsheet 5.10 (ผ่าน composer) |
-| Database | MySQL/MariaDB — schema `production` |
+| Database | MySQL 8.0 (local: WSL Ubuntu) — schema `production`, charset **utf8mb4** |
 | ต้นทาง DB dump | `code/database/production.sql` (Navicat dump จาก production.ewitewit.com, MySQL 5.7, 23/09/2026) |
 | Dev server | `php -S 0.0.0.0:8091 -t code/public_html` |
 | Adminer | `php -S 127.0.0.1:8090 index.php` ที่ `~/.local/share/adminer/` |
@@ -23,6 +23,20 @@ URL      : http://127.0.0.1:8091/admin/login
 Email    : ake@ewitewit.com   (ROOT)
 Password : APqt2026!local
 ```
+
+## การรันบน Windows (Docker)
+
+```bash
+docker run -d --name qt_app --add-host=host.docker.internal:host-gateway \
+  -p 8091:8091 -e DB_HOST=host.docker.internal \
+  -v C:/_quotation_script/QT_Generator/code:/app -w /app \
+  qt_app_img php -S 0.0.0.0:8091 -t public_html
+# หยุด/เริ่ม: docker stop qt_app / docker start qt_app
+```
+
+- `DB_HOST=host.docker.internal` ชี้ไป MySQL ใน WSL; **ไม่ set บน Linux ก็รันได้ปกติ** (fallback `localhost`)
+- extension ที่จำเป็น: `mysqli`, `zip` (ต้องมี `libzip-dev`), `gd` — ถ้า zip หาย export จะ 500 `Class "ZipArchive" not found`
+- หลังแก้ vendor/composer ให้เช็ค `vendor/composer/platform_check.php` ต้องการ PHP เวอร์ชันไหนเสมอ
 
 - หลัง login จะเข้าหน้า **Quotation AP** ทันที (แก้ที่ `Logon.php` — `redirect('admin/quotationAP')`)
 - Theme: AdminLTE skin เก็บต่อ account ใน `cms_accounts.extra_data.skin` (ปัจจุบัน `blue-light`)
@@ -84,13 +98,13 @@ AP_QT_Generator/
 | `apqt` | `apqt_local_2026` | admin/CLI |
 | `productionmy` | `eedMhuW34X4HsMYU6k7L` | ตัวแอป (ตาม `config/database.php` ไม่ต้องแก้) |
 
-Import ต้องใช้ `sql_mode='NO_AUTO_VALUE_ON_ZERO,ALLOW_INVALID_DATES'` เพราะ dump มี `'0000-00-00 00:00:00'`
+Import: dump สะอาดแล้ว (utf8mb4, ไม่มี zero-date) — import ตรงได้เลย; ถ้า import dump เก่าก่อน v1.17 ให้ใช้ `sql_mode='NO_AUTO_VALUE_ON_ZERO,ALLOW_INVALID_DATES'`
 
-## Features ที่พัฒนาแล้ว (อัปเดต 27/10/2026)
+## Features ที่พัฒนาแล้ว (อัปเดต 30/10/2026)
 
 - **Excel engine ใหม่** — PHPExcel → PhpSpreadsheet 5.10 ผ่าน compatibility bridge (`libraries/Excel.php`) โค้ด controller เดิมรันได้ไม่ต้องแก้; ติดตั้งด้วย `composer require phpoffice/phpspreadsheet`
 - **รับเฉพาะ .xlsx** — upload validation ปฏิเสธไฟล์อื่น, writer ใช้ Xlsx เท่านั้น
-- **แก้ contact name ได้** — ช่อง "Contact Name" ในหน้า Quotation AP (Load/Save ผ่าน AJAX) → เขียนลง cell **E10** ของไฟล์ export; เก็บใน `quotation_ap_data.contact_name`; endpoint: `GET/POST /admin/quotationAP/edit_contact`
+- **Contact name** — โปรแกรมเขียนชื่อผู้ติดต่อลง cell **E10** ของไฟล์ export เอง (เก็บใน `quotation_ap_data.contact_name`); ช่องแก้มือในหน้า Quotation AP ถูกตัดออกแล้ว (v1.16) เหลือ endpoint `GET/POST /admin/quotationAP/edit_contact` ไว้เผื่อเรียกจากที่อื่น
 - **Export เป็น 2 zip** — ① `*.zip` = quotation xlsx ทุกใบ + `Mediaplan.xlsx` (แผนที่เติมเลข QT/โครงการ/ยอดแบ่งแล้ว พร้อม paste กลับ PO Status) ② `*_pdf.zip` = PDF ทุกใบ
 - **PDF อัตโนมัติ** — ทุก quotation xlsx ถูก convert เป็น PDF ด้วย LibreOffice headless (`soffice --convert-to pdf`) ระหว่าง export
 - **ชื่อไฟล์ ≤ 74 ตัวอักษร** (ไม่รวมนามสกุล) — `sanitize_text()` ใช้ mb_substr นับ Thai chars ถูกต้อง
@@ -268,8 +282,17 @@ backups/production_clean_15tables_2026-09-25.sql.gz # หลัง cleanup ร�
 - [x] ~~PHPExcel ล้าสมัย~~ → แก้แล้วด้วย PhpSpreadsheet (25/09/2026)
 - [x] ~~ไม่มี FOREIGN KEY ใดๆ~~ → เพิ่ม FK ให้ความสัมพันธ์หลักแล้ว (27/10/2026 — ดู `code/database/migrations/20261027_integrity.sql`; คอลัมน์ audit `create_by_id`/`update_by_id` ยังไม่ผูก FK เพราะมี legacy user id ที่ถูกลบไปแล้วเป็นพันแถว)
 - [x] ~~`quotations.quotation_no` ไม่ normalize (N/A, format ปนกัน), `production_id` เป็น varchar~~ → แก้แล้ว 27/10/2026 (`migrations/20261027_quotation_no.sql` + guard ใน `Quotation.php`): N/A/ช่องว่าง → NULL, QT/Q- prefix ถูกตัด, `production_id` เป็น INT พร้อม FK
-- [ ] Charset `utf8` (3-byte) — เก็บ emoji ไม่ได้ ควรรื้อเป็น utf8mb4 ทั้ง schema
-- [ ] `'0000-00-00 00:00:00'` ค้างในข้อมูลบางแถว — ควรแปลงเป็น NULL
-- [ ] MySQL 5.7 (prod) vs 8.4 (local) — อะไรขึ้นต้องเช็ค sql_mode เสมอ
+- [x] ~~Charset `utf8` (3-byte)~~ → แปลงเป็น utf8mb4 ทั้ง schema แล้ว (v1.17 — 26 ตาราง + connection `database.php` + dump regenerate; ทดสอบ emoji round-trip ผ่าน)
+- [x] ~~`'0000-00-00 00:00:00'` ค้างในข้อมูลบางแถว~~ → แปลงเป็น NULL แล้ว (v1.18 — 67 แถว: production_start/end + quotation_date เป็น nullable, guard null-safe ใน Quotation.php)
+- [x] ~~MySQL 5.7 (prod) vs 8.x (local)~~ → ยกเลิก: โปรเจกต์รัน local เท่านั้น ไม่มีการ deploy ขึ้นเว็บจริง (30/10/2026)
 - [ ] ลบไฟล์ใน `_removed_quotation_module/` + frontend controllers เก่าเมื่อยืนยันแล้ว
 - [ ] `agency_fee` ยัง default = เปิด (ตาม media plan ใหม่) — ถ้ามีงานที่ไม่มี fee ต้องส่ง flag ปิดมาจาก importer
+
+## Tags ล่าสุด (branch fix/php83-phpspreadsheet)
+
+| Tag | เรื่อง |
+|---|---|
+| `v1.15-php-api-fix` | merge upstream v1.03–v1.14 + PhpSpreadsheet 5.x API (`getCell([col,row])`, probe loop ≤16384, pos 0-based) |
+| `v1.16-remove-contact-editor` | ตัดช่องแก้ Contact Name มือออกจากหน้า Quotation AP |
+| `v1.17-utf8mb4` | schema + connection + dump เป็น utf8mb4 หมด (emoji-safe) |
+| `v1.18-null-dates` | zero-date → NULL (67 แถว, nullable + null-safe guards) |

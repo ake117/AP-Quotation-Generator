@@ -397,7 +397,7 @@ $(document).ready(function() {
       
     $( "#quo_date" ).datepicker({
           dateFormat: "yy-mm-dd",
-          defaultDate: "-1m",
+          
           changeMonth: true,
           numberOfMonths: 3,
     });
@@ -405,7 +405,7 @@ $(document).ready(function() {
       from = $( "#from" )
         .datepicker({
           dateFormat: dateFormat,
-          defaultDate: "-1m",
+          
           changeMonth: true,
           numberOfMonths: 3,
           maxDate:$( "#to" ).val()
@@ -415,7 +415,7 @@ $(document).ready(function() {
         }),
       to = $( "#to" ).datepicker({
         dateFormat: dateFormat,
-        defaultDate: "-2m",
+        
         changeMonth: true,
         numberOfMonths: 3,
         minDate:$( "#from" ).val()

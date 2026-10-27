@@ -33,7 +33,8 @@ class QuotationAP extends MX_Controller
         }
         
         $highestColumn = $worksheet->getHighestColumn();
-        $highestColumnIndex = PHPExcel_Cell::columnIndexFromString($highestColumn);               
+        // Media plan columns used for quotations are A-N (14); ignore anything past that.
+        $highestColumnIndex = min(PHPExcel_Cell::columnIndexFromString($highestColumn), 14);
 
         // The PO Status file keeps its headers on row 4 (counters sit above them); an
         // older media plan starts on row 1. Use whichever row names the most columns.
@@ -41,17 +42,17 @@ class QuotationAP extends MX_Controller
         if ($headerRow < 1) {
             $probe = array();
             for ($probeRow = 1; $probeRow <= 8; $probeRow++) {
-                for ($probeCol = 0; $probeCol <= $highestColumnIndex; $probeCol++) {
-                    $probe[$probeRow][$probeCol] = $worksheet->getCellByColumnAndRow($probeCol, $probeRow)->getValue();
+                for ($probeCol = 1; $probeCol <= $highestColumnIndex; $probeCol++) {
+                    $probe[$probeRow][$probeCol - 1] = $worksheet->getCell([$probeCol, $probeRow])->getValue();
                 }
             }
             $headerRow = QuotationBatch::headerRow($probe, array_keys($coldata['field']));
         }
 
-        for($col=0; $col<=$highestColumnIndex; $col++) {            
-            $colname = strtoupper(trim($worksheet->getCellByColumnAndRow($col, $headerRow)->getValue()));  
+        for($col=1; $col<=$highestColumnIndex; $col++) {            
+            $colname = strtoupper(trim(($worksheet->getCell([$col, $headerRow])->getValue()) ?? ''));  
             if (array_key_exists($colname, $coldata['field'])) {
-                $coldata['pos'][$colname] = $col;            
+                $coldata['pos'][$colname] = $col-1;            
             }         
         }
 
@@ -126,16 +127,17 @@ class QuotationAP extends MX_Controller
                             $firstcol = '';
                             foreach ($coldata['pos'] as $colname => $colposition) {
                                 if ($firstcol=='') { $firstcol=$coldata['field'][$colname]; }
-                                $cell = $worksheet->getCellByColumnAndRow($colposition, $row);
+                                $cell = $worksheet->getCell([$colposition+1, $row]);
                                 // Formula cells (e.g. Pure Media) -> use the calculated value
                                 if ($cell->isFormula()) {
                                     $val = $cell->getCalculatedValue();
                                 } else {
                                     $val = $cell->getValue();
                                 }
-                                $datarow[$coldata['field'][$colname]] = trim($val);
+                                $datarow[$coldata['field'][$colname]] = trim(($val) ?? '');
                             }
                             
+
                             if ($datarow[$firstcol] == '') { break; }
 
                             if ($uploadFile == 'file_quotation_data') {

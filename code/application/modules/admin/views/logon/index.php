@@ -3,7 +3,7 @@
 	<head>
 
 		<meta charset="UTF-8">
-		<title>PRODUCTION COST CMS | Login</title>
+		<title>AP.QT.GEN | Login</title>
 		<meta content='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' name='viewport'>
 
                 <link rel="apple-touch-icon" sizes="76x76" href="<?= base_url('lib/img/favicon') ?>/apple-touch-icon.png">

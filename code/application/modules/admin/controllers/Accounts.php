@@ -236,6 +236,8 @@ class Accounts extends MX_Controller
             );
 
             if ($updatedaccount > 0) {
+                // name/avatar live in the session copy too — refresh it or the UI keeps the old name
+                $this->session->set_userdata('extra_data', json_encode($extra_data));
                 if ($this->input->post('change_password') == '1') {
                     $updatedpassword = $this->auth->change_password(
                         $this->auth->get_account_id(),
