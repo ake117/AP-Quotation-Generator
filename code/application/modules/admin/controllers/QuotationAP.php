@@ -218,7 +218,8 @@ class QuotationAP extends MX_Controller
                     $versionExcel = "Xlsx"; // .xlsx only
                     $extFile = ".xlsx";
 
-                    $saveFileName="Mediaplan";
+                    // Media plan file for the client zip: month/year from the quotation date
+                    $saveFileName = "AP_Media_Plan_".date_format($inpt_quotation_date,"M")."_".date_format($inpt_quotation_date,"Y");
                     $saveFileNameFull = $saveFileName.$extFile;
                     $placeFilesSave = realpath(dirname(__FILE__).'/../../../..')."/public_html/upload/{$filepath}/";
                     $pathSaveFile1 = $placeFilesSave.$saveFileNameFull;
