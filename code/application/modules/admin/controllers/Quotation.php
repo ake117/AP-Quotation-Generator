@@ -34,6 +34,29 @@ class Quotation extends MX_Controller
         $this->load->library('form_validation');
     }
 
+
+    /**
+     * Empty form fields arrive as '' — an INT column rejects that under strict
+     * sql_mode. Turn blanks into NULL and normalise the quotation number to the
+     * YYYY/N shape the generator itself produces.
+     */
+    private function _null_if_empty($value)
+    {
+        $value = trim((string) $value);
+        return ($value === '' || strtoupper($value) === 'N/A') ? NULL : $value;
+    }
+
+    private function _normalise_quotation_no($value)
+    {
+        $value = $this->_null_if_empty($value);
+        if ($value === NULL) {
+            return NULL;
+        }
+        // "QT2020/129" and "Q-0002" were typed by hand before the format existed.
+        $value = preg_replace('/^(QT|Q-)/i', '', $value);
+        return trim($value);
+    }
+
     public function index()
     {
         $query = $this->quotation->_get_all_quotation();
@@ -157,11 +180,11 @@ class Quotation extends MX_Controller
             $a_amount = str_replace(",", "",$amount[0]);
             $data = array(
                 'quotation_date' => $this->input->post('quo_date'),
-                'quotation_no' => $this->input->post('quo_no'),
+                'quotation_no' => $this->_normalise_quotation_no($this->input->post('quo_no')),
                 'job_no' => $this->input->post('job_no'),
                 'customer_id' => $this->input->post('customer'),
                 'project_id' => $this->input->post('project'),
-                'production_id' => $this->input->post('production'),
+                'production_id' => $this->_null_if_empty($this->input->post('production')),
                 'production_name' => $this->input->post('name'),
                 'production_start' => $this->input->post('from'),
                 'production_end' => $this->input->post('to'),
@@ -254,11 +277,11 @@ class Quotation extends MX_Controller
             $data = array(
                 'quotation_id' => $id,
                 'quotation_date' => $this->input->post('quo_date'),
-                'quotation_no' => $this->input->post('quo_no'),
+                'quotation_no' => $this->_normalise_quotation_no($this->input->post('quo_no')),
                 'job_no' => $this->input->post('job_no'),
                 'customer_id' => $this->input->post('customer'),
                 'project_id' => $this->input->post('project'),
-                'production_id' => $this->input->post('production'),
+                'production_id' => $this->_null_if_empty($this->input->post('production')),
                 'production_name' => $this->input->post('name'),
                 'production_start' => $this->input->post('from'),
                 'production_end' => $this->input->post('to'),

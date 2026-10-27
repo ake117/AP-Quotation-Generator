@@ -267,7 +267,7 @@ backups/production_clean_15tables_2026-09-25.sql.gz # หลัง cleanup ร�
 - [x] ~~รหัสผ่าน MD5~~ → ใช้ `password_hash()` (bcrypt) แล้ว; legacy MD5 ถูก upgrade อัตโนมัติตอน login ครั้งแรก (เหลือ 2 บัญชีที่ยังเป็น MD5 จนกว่าจะ login)
 - [x] ~~PHPExcel ล้าสมัย~~ → แก้แล้วด้วย PhpSpreadsheet (25/09/2026)
 - [x] ~~ไม่มี FOREIGN KEY ใดๆ~~ → เพิ่ม FK ให้ความสัมพันธ์หลักแล้ว (27/10/2026 — ดู `code/database/migrations/20261027_integrity.sql`; คอลัมน์ audit `create_by_id`/`update_by_id` ยังไม่ผูก FK เพราะมี legacy user id ที่ถูกลบไปแล้วเป็นพันแถว)
-- [ ] `quotations.quotation_no` ไม่ normalize (N/A, format ปนกัน), `production_id` เป็น varchar
+- [x] ~~`quotations.quotation_no` ไม่ normalize (N/A, format ปนกัน), `production_id` เป็น varchar~~ → แก้แล้ว 27/10/2026 (`migrations/20261027_quotation_no.sql` + guard ใน `Quotation.php`): N/A/ช่องว่าง → NULL, QT/Q- prefix ถูกตัด, `production_id` เป็น INT พร้อม FK
 - [ ] Charset `utf8` (3-byte) — เก็บ emoji ไม่ได้ ควรรื้อเป็น utf8mb4 ทั้ง schema
 - [ ] `'0000-00-00 00:00:00'` ค้างในข้อมูลบางแถว — ควรแปลงเป็น NULL
 - [ ] MySQL 5.7 (prod) vs 8.4 (local) — อะไรขึ้นต้องเช็ค sql_mode เสมอ
