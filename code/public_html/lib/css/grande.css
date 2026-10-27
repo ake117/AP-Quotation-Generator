@@ -21,3 +21,63 @@
 .logo_project{
     max-height: 150px;
 }
+/* ===== Modern theme overrides (applied over AdminLTE 2.4, any skin) ===== */
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif !important;
+  font-size: 14px;
+}
+/* Flat sidebar with subtle accent */
+.main-sidebar {
+  background: #0f172a !important;
+  box-shadow: 2px 0 12px rgba(0,0,0,.15) !important;
+}
+.main-sidebar .sidebar a {
+  color: #cbd5e1 !important;
+  border-left: 3px solid transparent !important;
+}
+.main-sidebar .sidebar a:hover {
+  background: #1e293b !important;
+  color: #fff !important;
+}
+.main-sidebar .sidebar .active > a {
+  background: #2563eb !important;
+  color: #fff !important;
+  border-left-color: #93c5fd !important;
+}
+.main-sidebar .user-panel > .info { color: #e2e8f0 !important; }
+/* Navbar */
+.main-header .navbar {
+  background: #ffffff !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,.08) !important;
+}
+.main-header .navbar .nav > li > a { color: #334155 !important; }
+.main-header .logo { background: #0f172a !important; }
+/* Cards */
+.box {
+  border: 0 !important;
+  border-radius: 12px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,.10) !important;
+}
+.box-header { border-radius: 12px 12px 0 0 !important; }
+.box-footer { border-radius: 0 0 12px 12px !important; }
+/* Buttons & inputs */
+.btn { border-radius: 8px !important; font-weight: 600 !important; }
+.form-control, .select2-container .select2-choice {
+  border-radius: 8px !important;
+  border-color: #cbd5e1 !important;
+}
+.form-control:focus { border-color: #2563eb !important; box-shadow: 0 0 0 3px rgba(37,99,235,.15) !important; }
+/* Tables */
+.table > thead > tr > th {
+  background: #f1f5f9;
+  color: #334155;
+  font-weight: 600;
+  border-bottom: 2px solid #e2e8f0 !important;
+}
+/* Data tables */
+#table_quotation_wrapper .dataTables_filter input, #table_quotation_wrapper .dataTables_length select { border-radius: 8px; }
+/* Labels */
+.label { border-radius: 6px !important; font-weight: 600 !important; }
+/* Login page */
+.login-page { background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%) !important; }
+.login-box { border-radius: 14px !important; box-shadow: 0 10px 30px rgba(0,0,0,.25) !important; }
