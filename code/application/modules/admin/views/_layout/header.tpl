@@ -76,18 +76,12 @@
 			<!-- Logo -->
 			<a href="{site_url url="admin"}" class="logo">
 				<!-- mini logo for sidebar mini 50x50 pixels -->
-				<span class="logo-mini"><b>C</b>OST</span>
+				<span class="logo-mini"><b>A</b>PQT</span>
 				<!-- logo for regular state and mobile devices -->
-				<span class="logo-lg">COST</span>
+				<span class="logo-lg">AP.QT.GEN</span>
 			</a>
 			<!-- Header Navbar: style can be found in header.less -->
 			<nav class="navbar navbar-static-top" role="navigation">
-				<!-- Sidebar toggle button-->
-				<a href="#" class="sidebar-toggle" data-toggle="push-menu" role="button">
-				<span class="icon-bar"></span>
-				<span class="icon-bar"></span>
-				<span class="icon-bar"></span>
-				</a>
 				<div class="navbar-custom-menu">
 					<ul class="nav navbar-nav">
 						<!--<li>
@@ -157,9 +151,6 @@
                                             {ci_language line="mod_mainoptions" default='MAIN OPTIONS'}
                                         </li>
 
-					<li {if $activelink==='dashboard'}class="active"{/if} >
-                                            <a href="{$base_url}/admin/dashboard"><i class="fa fa-dashboard"></i> <span>{ci_language line="mod_dashboard" default='Dashboard'}</span></a>
-					</li>
                                         <!--old menu-->
 					{*if wpn_link_permission('admin/posts') }
 						<li {if $activelink==='posts'}class="active"{/if}>

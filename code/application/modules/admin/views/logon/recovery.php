@@ -2,7 +2,7 @@
 <html>
 	<head>
 		<meta charset="UTF-8">
-		<title>PRODUCTION COST CMS | <?= wpn_lang('wpn_recoverypass', 'Password recovery'); ?></title>
+		<title>AP.QT.GEN | <?= wpn_lang('wpn_recoverypass', 'Password recovery'); ?></title>
 		<meta content='width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no' name='viewport'>
 		<!-- bootstrap 3.3.4 -->
 		<link href="<?= base_url('lib/bootstrap/css/bootstrap.min.css') ?>" rel="stylesheet" type="text/css" />

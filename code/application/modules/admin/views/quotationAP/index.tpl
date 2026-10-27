@@ -201,7 +201,7 @@ table.dataTable th {
           from = $( "#from" )
             .datepicker({
               dateFormat: dateFormat,
-              defaultDate: "-1m",
+              
               changeMonth: true,
               numberOfMonths: 3,
               maxDate:$( "#to" ).val()
@@ -212,7 +212,7 @@ table.dataTable th {
             }),
           to = $( "#to" ).datepicker({
             dateFormat: dateFormat,
-            defaultDate: "-2m",
+            
             changeMonth: true,
             numberOfMonths: 3,
             minDate:$( "#from" ).val()
@@ -343,7 +343,7 @@ table.dataTable th {
         
         $("#quotation_date").datepicker({
             dateFormat: "yy-mm-dd",
-            defaultDate: "-1m",
+            
             changeMonth: true,
             numberOfMonths: 1,
             gotoCurrent: true
