@@ -284,7 +284,7 @@ backups/production_clean_15tables_2026-09-25.sql.gz # หลัง cleanup ร�
 - [x] ~~`quotations.quotation_no` ไม่ normalize (N/A, format ปนกัน), `production_id` เป็น varchar~~ → แก้แล้ว 27/10/2026 (`migrations/20261027_quotation_no.sql` + guard ใน `Quotation.php`): N/A/ช่องว่าง → NULL, QT/Q- prefix ถูกตัด, `production_id` เป็น INT พร้อม FK
 - [x] ~~Charset `utf8` (3-byte)~~ → แปลงเป็น utf8mb4 ทั้ง schema แล้ว (v1.17 — 26 ตาราง + connection `database.php` + dump regenerate; ทดสอบ emoji round-trip ผ่าน)
 - [x] ~~`'0000-00-00 00:00:00'` ค้างในข้อมูลบางแถว~~ → แปลงเป็น NULL แล้ว (v1.18 — 67 แถว: production_start/end + quotation_date เป็น nullable, guard null-safe ใน Quotation.php)
-- [ ] MySQL 5.7 (prod) vs 8.4 (local) — อะไรขึ้นต้องเช็ค sql_mode เสมอ
+- [x] ~~MySQL 5.7 (prod) vs 8.x (local)~~ → ยกเลิก: โปรเจกต์รัน local เท่านั้น ไม่มีการ deploy ขึ้นเว็บจริง (30/10/2026)
 - [ ] ลบไฟล์ใน `_removed_quotation_module/` + frontend controllers เก่าเมื่อยืนยันแล้ว
 - [ ] `agency_fee` ยัง default = เปิด (ตาม media plan ใหม่) — ถ้ามีงานที่ไม่มี fee ต้องส่ง flag ปิดมาจาก importer
 
