@@ -248,7 +248,7 @@ class Quotation extends MX_Controller
                 redirect('admin/estimated');
             }
             $get_quotations = $this->quotation->_get_quotations($id);
-            $get_quotations['production_start'] = substr($get_quotations['production_start'], 0, 10);
+            $get_quotations['production_start'] = substr($get_quotations['production_start'] ?? '', 0, 10);
             $get_quotations['production_end'] = (empty($get_quotations['production_end']) || $get_quotations['production_end'] == '0000-00-00 00:00:00')?"":substr($get_quotations['production_end'], 0, 10);
             $get_quotations['quotation_date'] = (empty($get_quotations['quotation_date']) || $get_quotations['quotation_date'] == '0000-00-00 00:00:00')?"":substr($get_quotations['quotation_date'], 0, 10);
             $get_quotations_task = $this->quotation->_get_quotations_detail($id);
