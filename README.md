@@ -287,6 +287,8 @@ backups/production_clean_15tables_2026-09-25.sql.gz # หลัง cleanup ร�
 - [x] ~~MySQL 5.7 (prod) vs 8.x (local)~~ → ยกเลิก: โปรเจกต์รัน local เท่านั้น ไม่มีการ deploy ขึ้นเว็บจริง (30/10/2026)
 - [ ] ลบไฟล์ใน `_removed_quotation_module/` + frontend controllers เก่าเมื่อยืนยันแล้ว
 - [ ] `agency_fee` ยัง default = เปิด (ตาม media plan ใหม่) — ถ้ามีงานที่ไม่มี fee ต้องส่ง flag ปิดมาจาก importer
+- [ ] UI ระดับใหญ่: ย้าย theme ไป **Tabler** (https://tabler.io/admin-template/preview?theme=dark) — ต้องแก้ template ~40 ไฟล์ + Bootstrap 5 (jQuery conflicts: DataTables/datepicker/Select2) — ควรเริ่มจากหน้า quotationAP แล้วค่อยทยอยหน้าอื่น (เสนอครั้งแรก 30/10/2026, ผู้ใช้เลื่อนไว้ก่อน)
+- [ ] (ทางเลือกเบา ๆ แทน Tabler) แต่ง AdminLTE 2.4 ให้เป็น dark สไตล์ Tabler ผ่าน CSS override ใน `grande.css` — เร็ว ไม่พังฟังก์ชัน
 
 ## Tags ล่าสุด (branch fix/php83-phpspreadsheet)
 
