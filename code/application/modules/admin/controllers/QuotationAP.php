@@ -33,7 +33,8 @@ class QuotationAP extends MX_Controller
         }
         
         $highestColumn = $worksheet->getHighestColumn();
-        $highestColumnIndex = PHPExcel_Cell::columnIndexFromString($highestColumn);               
+        // Media plan columns used for quotations are A-N (14); ignore anything past that.
+        $highestColumnIndex = min(PHPExcel_Cell::columnIndexFromString($highestColumn), 14);
 
         // The PO Status file keeps its headers on row 4 (counters sit above them); an
         // older media plan starts on row 1. Use whichever row names the most columns.
@@ -41,7 +42,7 @@ class QuotationAP extends MX_Controller
         if ($headerRow < 1) {
             $probe = array();
             for ($probeRow = 1; $probeRow <= 8; $probeRow++) {
-                for ($probeCol = 1; $probeCol <= min($highestColumnIndex, 16384); $probeCol++) {
+                for ($probeCol = 1; $probeCol <= $highestColumnIndex; $probeCol++) {
                     $probe[$probeRow][$probeCol - 1] = $worksheet->getCell([$probeCol, $probeRow])->getValue();
                 }
             }
