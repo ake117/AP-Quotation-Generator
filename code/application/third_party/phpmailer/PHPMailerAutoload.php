@@ -37,13 +37,5 @@ if (version_compare(PHP_VERSION, '5.1.2', '>=')) {
     } else {
         spl_autoload_register('PHPMailerAutoload');
     }
-} else {
-    /**
-     * Fall back to traditional autoload for old PHP versions
-     * @param string $classname The name of the class to load
-     */
-    function __autoload($classname)
-    {
-        PHPMailerAutoload($classname);
-    }
 }
+// pre-5.1.2 __autoload() fallback removed: PHP 8 forbids declaring __autoload() at compile time

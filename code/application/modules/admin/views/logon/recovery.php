@@ -25,7 +25,7 @@
 	<body class="login-page">
 		<div class="login-box">
 			<div class="login-logo">
-				<img style="height: 100px;;" src="<?= base_url('lib/img') ?>/logo.png" />
+							<div style="font-size: 34px; font-weight: 700; color: #fff; letter-spacing: .5px;">AP Quotation Generator</div>
 			</div><!-- /.login-logo -->
 			<div class="login-box-body">
 				<p class="login-box-msg"><?= wpn_lang('wpn_recoverypass', 'Password recovery'); ?></p>
