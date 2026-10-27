@@ -136,7 +136,7 @@ class Quotation extends MX_Controller
         $data['project_id'] = $get_quotations['project_id'];
         $data['customer_id'] = $get_quotations['projects']['customer_id'];
         $data['production_name'] = $get_quotations['production_name'];
-        $data['production_start'] = mdate('%Y/%m/%d', strtotime($get_quotations['production_start']));
+        $data['production_start'] = (empty($get_quotations['production_start']) || $get_quotations['production_start'] == '0000-00-00 00:00:00')?"":mdate('%Y/%m/%d', strtotime($get_quotations['production_start']));
         $data['production_end'] = (empty($get_quotations['production_end']) || $get_quotations['production_end'] == "0000-00-00 00:00:00")?"":mdate('%Y/%m/%d', strtotime($get_quotations['production_end']));
         $data['pm_member_id'] = $get_quotations['pm_member_id'];
         $data['job_no'] = $get_quotations['job_no'];
