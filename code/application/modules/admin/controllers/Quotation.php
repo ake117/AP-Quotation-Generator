@@ -137,7 +137,7 @@ class Quotation extends MX_Controller
         $data['customer_id'] = $get_quotations['projects']['customer_id'];
         $data['production_name'] = $get_quotations['production_name'];
         $data['production_start'] = mdate('%Y/%m/%d', strtotime($get_quotations['production_start']));
-        $data['production_end'] = ($get_quotations['production_end'] == "0000-00-00 00:00:00")?"":mdate('%Y/%m/%d', strtotime($get_quotations['production_end']));
+        $data['production_end'] = (empty($get_quotations['production_end']) || $get_quotations['production_end'] == "0000-00-00 00:00:00")?"":mdate('%Y/%m/%d', strtotime($get_quotations['production_end']));
         $data['pm_member_id'] = $get_quotations['pm_member_id'];
         $data['job_no'] = $get_quotations['job_no'];
         $data['quo_date'] = mdate('%Y-%m-%d', strtotime($get_quotations['update_date']));
@@ -249,8 +249,8 @@ class Quotation extends MX_Controller
             }
             $get_quotations = $this->quotation->_get_quotations($id);
             $get_quotations['production_start'] = substr($get_quotations['production_start'], 0, 10);
-            $get_quotations['production_end'] = ($get_quotations['production_end'] == '0000-00-00 00:00:00')?"":substr($get_quotations['production_end'], 0, 10);
-            $get_quotations['quotation_date'] = ($get_quotations['quotation_date'] == '0000-00-00 00:00:00')?"":substr($get_quotations['quotation_date'], 0, 10);
+            $get_quotations['production_end'] = (empty($get_quotations['production_end']) || $get_quotations['production_end'] == '0000-00-00 00:00:00')?"":substr($get_quotations['production_end'], 0, 10);
+            $get_quotations['quotation_date'] = (empty($get_quotations['quotation_date']) || $get_quotations['quotation_date'] == '0000-00-00 00:00:00')?"":substr($get_quotations['quotation_date'], 0, 10);
             $get_quotations_task = $this->quotation->_get_quotations_detail($id);
 
             //echo '<pre>';print_r($id);echo '</pre>';
@@ -479,7 +479,7 @@ class Quotation extends MX_Controller
         $objPHPExcel->getActiveSheet()->getStyle("J3")->applyFromArray(array('font'  => array('bold'  => true,'size'  => 14)));
         $objPHPExcel->getActiveSheet()->setCellValue("J9", "วันที่");
         $objPHPExcel->getActiveSheet()->getStyle("J9")->applyFromArray(array('font'  => array('bold'  => true,'size'  => 14)));
-        $newDate = ($quotation['quotation_date'] != "0000-00-00 00:00:00")?date("j-M-y", strtotime($quotation['quotation_date'])):"";
+        $newDate = (!empty($quotation['quotation_date']) && $quotation['quotation_date'] != "0000-00-00 00:00:00")?date("j-M-y", strtotime($quotation['quotation_date'])):"";
         $objPHPExcel->getActiveSheet()->setCellValue("K9", $newDate);
         $objPHPExcel->getActiveSheet()->getStyle("K9")->applyFromArray(array('font'  => array('size'  => 14)));
         $objPHPExcel->getActiveSheet()->mergeCells('K9:L9');
