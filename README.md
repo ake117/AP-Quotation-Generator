@@ -1,7 +1,7 @@
-# AP Quotation Generator (AP_Quotation_by_Chat)
+# AP Quotation Generator
 
 ระบบสร้าง/จัดการใบเสนอราคา (Quotation) สำหรับงานโฆษณา Boost Post ของ AP (Thailand) — พัฒนาต่อยอดบนแอดมินแพเนล CodeIgniter (wpanel) โดยโฟกัสเฉพาะโมดูล **Quotation AP**
-
+originally developed by Chat
 ---
 
 ## ข้อมูลโปรเจกต์
