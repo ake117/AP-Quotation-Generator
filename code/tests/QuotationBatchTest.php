@@ -1,0 +1,402 @@
+<?php
+
+use PHPUnit\Framework\TestCase;
+
+/**
+ * How one media-plan row becomes documents.
+ *
+ * The team mostly issues **several quotations out of a single budget line**: the note
+ * column (E) lists the ProjectIDs the money is split across, one document each, equal
+ * shares. Now and then **one quotation holds several items** instead.
+ *
+ * Reference for the split shape: the September plan issues Grande Pleno Pinklao -
+ * Charun 2 as 2026/1658, 1659 and 1660 at 5,000 each — one 15,000 entry, three documents.
+ */
+final class QuotationBatchTest extends TestCase
+{
+    private function row(array $overrides = array()): array
+    {
+        return array_merge(array(
+            'quotation_date'  => '2026-09-25',
+            'quotation_no'    => '2026/1658',
+            'job_no'          => '260902AP',
+            'contact_name'    => ' คุณสุวิมล ศีลพิพัฒน์ ',
+            'company_title'   => 'บริษัท เอพี เอ็มอี 18 จำกัด (สำนักงานใหญ่)',
+            'company_address' => '170/57 อาคารโอเชี่ยนทาวเวอร์ 1 ชั้น 18 ถนนรัชดาภิเษกตัดใหม่ แขวงคลองเตย เขตคลองเตย กรุงเทพฯ 10110',
+            'project'         => 'Grande Pleno Pinklao - Charun 2',
+            'project_file'    => 'Grande-Pleno-Pinklao-Charun-2_9-9',
+            'ad_format'       => 'Boostpost',
+            'period_text'     => '14 - 17 Sep 2026',
+            'note'            => '40194',
+            'media_cost'      => 0,
+            'budget_all'      => 15000,
+            'agency_fee'      => true,
+        ), $overrides);
+    }
+
+    private function batch(): QuotationBatch
+    {
+        return new QuotationBatch(new QuotationExporter(TEMPLATE_PATH, IMAGE_DIR));
+    }
+
+    private function outDir(): string
+    {
+        $dir = sys_get_temp_dir() . '/apqt-batch-' . bin2hex(random_bytes(4));
+        mkdir($dir, 0700, true);
+
+        return $dir;
+    }
+
+    private static function pdfText(string $pdf): string
+    {
+        return (string) shell_exec('pdftotext -layout ' . escapeshellarg($pdf) . ' - 2>/dev/null');
+    }
+
+    /** The total as the customer reads it — two decimals, because the cell format says so. */
+    private static function printedTotal(string $pdf): float
+    {
+        $text = self::pdfText($pdf);
+        self::assertMatchesRegularExpression('/รวมทั้งสิ้น \(Grand Total\)\s+([\d,]+\.\d\d)/u', $text);
+        preg_match('/รวมทั้งสิ้น \(Grand Total\)\s+([\d,]+\.\d\d)/u', $text, $m);
+
+        return (float) str_replace(',', '', $m[1]);
+    }
+
+    /** The total the file actually carries, before the two-decimal display rounds it. */
+    private static function carriedTotal(string $xlsx): float
+    {
+        $sheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($xlsx)->getSheet(0);
+
+        return (float) $sheet->getCell('L50')->getCalculatedValue();
+    }
+
+    // ------------------------------------------------------- the note decides the count
+
+    public function test_a_note_with_one_project_id_is_one_document(): void
+    {
+        // Column C can be stale; the ID decides the name even when no split happens.
+        $docs = $this->batch()->export($this->row(array(
+            'budget_all' => 5000,
+            'project'    => 'WRONG PROJECT',
+            'note'       => '40194',
+        )), $this->outDir());
+
+        $this->assertCount(1, $docs);
+        $this->assertSame(5000.00, self::printedTotal($docs[0]['pdf']));
+        $this->assertStringContainsString('Grande Pleno Pinklao - Charun 2', self::pdfText($docs[0]['pdf']));
+    }
+
+    public function test_every_project_id_in_the_note_becomes_its_own_document(): void
+    {
+        $docs = $this->batch()->export($this->row(array(
+            'note'       => '40194/40112',
+            'budget_all' => 10000,
+        )), $this->outDir());
+
+        $this->assertCount(2, $docs);
+        $this->assertStringContainsString('Grande Pleno Pinklao - Charun 2', self::pdfText($docs[0]['pdf']));
+        $this->assertStringContainsString('Grande Pleno Pinklao - Kanchana', self::pdfText($docs[1]['pdf']));
+        $this->assertSame(5000.00, self::printedTotal($docs[0]['pdf']));
+        $this->assertSame(5000.00, self::printedTotal($docs[1]['pdf']));
+    }
+
+    public function test_ids_can_be_separated_by_commas_slashes_or_line_breaks(): void
+    {
+        $expected = array('40194', '40112');
+
+        $this->assertSame($expected, QuotationBatch::projectIds('40194, 40112'));
+        $this->assertSame($expected, QuotationBatch::projectIds('40194/40112'));
+        $this->assertSame($expected, QuotationBatch::projectIds("40194\r\n40112"));
+        $this->assertSame($expected, QuotationBatch::projectIds(" 40194 , 40112 /"));
+        // The same ID twice is one document, not two.
+        $this->assertSame($expected, QuotationBatch::projectIds('40194, 40112, 40194'));
+        $this->assertSame(array(), QuotationBatch::projectIds(''));
+
+        // IDs can carry letters, and compare case-insensitively.
+        $this->assertSame(array('AP0001', 'AC0003'), QuotationBatch::projectIds('AP0001, AC0003'));
+        $this->assertSame(array('AP0001'), QuotationBatch::projectIds('ap0001'));
+        $this->assertSame(array('AP0001', '40194'), QuotationBatch::projectIds('AP0001/40194'));
+        // Words that are not IDs are ignored, not turned into documents.
+        $this->assertSame(array(), QuotationBatch::projectIds('Boost post'));
+    }
+
+    public function test_an_unknown_id_keeps_the_rows_project_instead_of_inventing_one(): void
+    {
+        $docs = $this->batch()->export($this->row(array('note' => '99999', 'budget_all' => 5000)), $this->outDir());
+
+        $this->assertCount(1, $docs);
+        $this->assertStringContainsString('Grande Pleno Pinklao - Charun 2', self::pdfText($docs[0]['pdf']));
+    }
+
+    // ------------------------------------------------------- the money
+
+    public function test_the_share_keeps_six_decimals_while_the_cell_shows_two(): void
+    {
+        $docs = $this->batch()->export($this->row(array(
+            'note'       => '40194/40112/70105',
+            'budget_all' => 10000,
+            'project_file' => 'split-three',
+        )), $this->outDir());
+
+        $this->assertCount(3, $docs);
+
+        $carried = 0.0;
+        foreach ($docs as $doc) {
+            // The customer reads two decimals…
+            $this->assertSame(3333.33, self::printedTotal($doc['pdf']));
+            // …while the document keeps the third of a satang, so the three add up.
+            $carried += self::carriedTotal($doc['xlsx']);
+        }
+
+        $this->assertEqualsWithDelta(10000.00, $carried, 0.005, 'the three documents must carry the whole budget');
+    }
+
+    public function test_a_share_that_lands_on_a_satang_still_keeps_six_decimals(): void
+    {
+        $docs = $this->batch()->export($this->row(array(
+            'note'       => '40194/40112/70105',
+            'budget_all' => 15000,
+        )), $this->outDir());
+
+        $this->assertCount(3, $docs);
+        $carried = 0.0;
+        foreach ($docs as $doc) {
+            $this->assertSame(5000.00, self::printedTotal($doc['pdf']));
+            $carried += self::carriedTotal($doc['xlsx']);
+        }
+
+        $this->assertEqualsWithDelta(15000.00, $carried, 0.005);
+    }
+
+    public function test_an_id_with_letters_can_name_a_project(): void
+    {
+        $batch = new QuotationBatch(
+            new QuotationExporter(TEMPLATE_PATH, IMAGE_DIR),
+            array('AP0001' => 'Aspire Onnut Station', 'AC0003' => 'Aspire Sukhumvit - Rama 4')
+        );
+
+        $docs = $batch->export($this->row(array(
+            'note'       => 'ap0001/ac0003',
+            'budget_all' => 10000,
+        )), $this->outDir());
+
+        $this->assertCount(2, $docs);
+        $this->assertStringContainsString('Aspire Onnut Station', self::pdfText($docs[0]['pdf']));
+        $this->assertStringContainsString('Aspire Sukhumvit - Rama 4', self::pdfText($docs[1]['pdf']));
+    }
+
+    public function test_unequal_shares_can_be_given(): void
+    {
+        $docs = $this->batch()->export($this->row(array(
+            'note'          => '40194/40112',
+            'budget_all'    => 10000,
+            'split_amounts' => array(6000, 4000),
+        )), $this->outDir());
+
+        $this->assertCount(2, $docs);
+        $this->assertSame(6000.00, self::printedTotal($docs[0]['pdf']));
+        $this->assertSame(4000.00, self::printedTotal($docs[1]['pdf']));
+    }
+
+    public function test_the_shares_add_up_to_the_total(): void
+    {
+        foreach (array(5000.0, 10000.0, 12345.0, 25000.0, 100000.0, 3333.33) as $total) {
+            foreach (array(2, 3, 4, 7) as $count) {
+                $shares = QuotationBatch::splitBudget($total, $count);
+                $this->assertCount($count, $shares);
+                $this->assertEqualsWithDelta($total, array_sum($shares), 0.0000005, "{$total} over {$count}");
+            }
+        }
+    }
+
+    // ------------------------------------------------------- naming from B + C
+
+    public function test_a_split_document_is_named_brief_name_plus_its_own_project(): void
+    {
+        // Rows 51 and 52 of the September plan: one brief, two projects, 5,000 each.
+        $docs = $this->batch()->export($this->row(array(
+            'project'      => 'Pleno Petchkasem 91',
+            'project_file' => 'ทาวน์โฮม และ บ้านแฝด โซน เพชรเกษม-บางแค_Pleno Petchkasem 91',
+            'note'         => '40144/70122',
+            'budget_all'   => 10000,
+            'split_quotation_nos' => array('2026/1591', '2026/1592'),
+        )), $this->outDir());
+
+        $this->assertCount(2, $docs);
+        $first = basename($docs[0]['xlsx']);
+        $second = basename($docs[1]['xlsx']);
+
+        $this->assertStringContainsString('Pleno-Petchkasem-91', $first);
+        $this->assertStringContainsString('Pleno-Town-Petchkasem-81', $second);
+        // The brief survives, and the row's own project is not repeated in the second one.
+        $this->assertStringContainsString('เพชรเกษม-บางแค', $second);
+        $this->assertStringNotContainsString('Pleno-Petchkasem-91_Pleno-Town', $second);
+        $this->assertSame(5000.00, self::printedTotal($docs[0]['pdf']));
+        $this->assertSame(5000.00, self::printedTotal($docs[1]['pdf']));
+    }
+
+    public function test_a_brief_name_without_a_project_gets_one_appended(): void
+    {
+        $this->assertSame(
+            'โชคทันใจ_Pleno Petchkasem 91',
+            QuotationBatch::withProject('โชคทันใจ', 'Pleno Petchkasem 91', 'Pleno Petchkasem 91')
+        );
+        $this->assertSame(
+            'โชคทันใจ_Pleno Town Petchkasem 81',
+            QuotationBatch::withProject('โชคทันใจ', 'Pleno Petchkasem 91', 'Pleno Town Petchkasem 81')
+        );
+        // An empty brief falls back to the project alone.
+        $this->assertSame('Pleno Town Petchkasem 81', QuotationBatch::withProject('', '', 'Pleno Town Petchkasem 81'));
+    }
+
+    public function test_split_numbers_run_on_from_the_last_one_used(): void
+    {
+        $issued = QuotationBatch::consecutiveNumbers(2026, 1590, 3);
+
+        $this->assertSame(array('2026/1591', '2026/1592', '2026/1593'), $issued['numbers']);
+        $this->assertSame(1593, $issued['last']);
+
+        // Four digits until the sequence outgrows them, then it simply keeps going.
+        $this->assertSame(array('2026/10000'), QuotationBatch::consecutiveNumbers(2026, 9999, 1)['numbers']);
+        $this->assertSame(array(), QuotationBatch::consecutiveNumbers(2026, 10, 0)['numbers']);
+    }
+
+    public function test_a_new_number_never_repeats_one_already_on_file(): void
+    {
+        $this->assertSame(1541, QuotationBatch::highestNumber(array('2026/1541', '2026/1539', 'N/A')));
+        $this->assertSame(1541, QuotationBatch::highestNumber(array('1541')));
+        $this->assertSame(0, QuotationBatch::highestNumber(array()));
+        $this->assertSame(0, QuotationBatch::highestNumber(array('N/A', '')));
+
+        // The floor wins when the counter is behind what the database already holds.
+        $floor = QuotationBatch::highestNumber(array('2026/1541'));
+        $issued = QuotationBatch::consecutiveNumbers(2026, max(0, $floor), 2);
+        $this->assertSame(array('2026/1542', '2026/1543'), $issued['numbers']);
+    }
+
+    // ------------------------------------------------------- one row, many documents
+
+    public function test_a_plan_row_becomes_one_row_per_document(): void
+    {
+        // The September sheet, No. 49, before anyone split it by hand.
+        $source = $this->row(array(
+            'project'      => 'Pleno Petchkasem 91',
+            'project_file' => 'ทาวน์โฮม และ บ้านแฝด โซน เพชรเกษม-บางแค_Pleno Petchkasem 91',
+            'note'         => '40144/70122',
+            'budget_all'   => 10000,
+        ));
+
+        $rows = QuotationBatch::splitRows($source, array('2026/1591', '2026/1592'));
+
+        $this->assertCount(2, $rows);
+
+        $this->assertSame('2026/1591', $rows[0]['quotation_no']);
+        $this->assertSame('Pleno Petchkasem 91', $rows[0]['project']);
+        $this->assertSame(
+            'ทาวน์โฮม และ บ้านแฝด โซน เพชรเกษม-บางแค_Pleno Petchkasem 91',
+            $rows[0]['project_file']
+        );
+        // One ID per row, or the export would split the row a second time.
+        $this->assertSame('40144', $rows[0]['note']);
+
+        $this->assertSame('2026/1592', $rows[1]['quotation_no']);
+        $this->assertSame('Pleno Town Petchkasem 81', $rows[1]['project']);
+        $this->assertSame(
+            'ทาวน์โฮม และ บ้านแฝด โซน เพชรเกษม-บางแค_Pleno Town Petchkasem 81',
+            $rows[1]['project_file']
+        );
+        $this->assertSame('70122', $rows[1]['note']);
+
+        // 10,000 over two is 5,000 each, and each carries its own pure media.
+        $this->assertSame(5000.0, (float) $rows[0]['budget_all']);
+        $this->assertSame(5000.0, (float) $rows[1]['budget_all']);
+        $this->assertEqualsWithDelta(4190.939189, (float) $rows[0]['media_cost'], 0.000001);
+    }
+
+    public function test_a_row_with_one_id_stays_one_row(): void
+    {
+        $rows = QuotationBatch::splitRows($this->row(array('note' => '40194')), array('2026/1684'));
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('2026/1684', $rows[0]['quotation_no']);
+        $this->assertSame(15000.0, (float) $rows[0]['budget_all']);
+    }
+
+    public function test_the_headers_are_found_wherever_the_sheet_keeps_them(): void
+    {
+        $known = array('PROJECT', 'BRIEFNAME', 'QT NO.', 'PERIOD', 'NOTE');
+
+        // The PO Status file: counters above, headers on row 4.
+        $poStatus = array(
+            1 => array(''),
+            2 => array('รอ PO', 'ส่งงานแล้ว'),
+            3 => array('95,000.00', '10,584,874.25'),
+            4 => array('Project', 'BriefName', 'QT No.', 'Period', 'Note'),
+            5 => array('BG2 Campaign', 'Grande Pleno...', '2026/1590', '7 - 13 Sep 2026', '40194'),
+        );
+        $this->assertSame(4, QuotationBatch::headerRow($poStatus, $known));
+
+        // An older plan starts at row 1.
+        $older = array(1 => array('Project', 'BriefName', 'QT No.'), 2 => array('Aspire', 'Aspire_9.9', '2026/1539'));
+        $this->assertSame(1, QuotationBatch::headerRow($older, $known));
+
+        // Nothing recognisable: fall back to the first row rather than inventing one.
+        $this->assertSame(1, QuotationBatch::headerRow(array(3 => array('a', 'b')), $known));
+    }
+
+    // ------------------------------------------------------- merge still wins
+
+    public function test_a_merged_row_is_one_document_holding_every_item(): void
+    {
+        $docs = $this->batch()->export($this->row(array(
+            'note'         => '40194/40112',
+            'project_file' => 'Apitown-Multi',
+            'budget_all'   => 10000,
+            'items'        => array(
+                array('project' => 'Apitown Chonburi - Bangsaen', 'detail' => 'Boost post 1 - 11 Sep 2026', 'qty' => 2, 'unit_price' => 2500.00),
+                array('project' => 'Pleno Rama 9 - Krungthepkreetha 4', 'detail' => 'Boost post 1 - 11 Sep 2026', 'qty' => 1, 'unit_price' => 3381.87),
+            ),
+        )), $this->outDir());
+
+        $this->assertCount(1, $docs);
+        $text = self::pdfText($docs[0]['pdf']);
+        $this->assertStringContainsString('Apitown Chonburi - Bangsaen', $text);
+        $this->assertStringContainsString('Pleno Rama 9 - Krungthepkreetha 4', $text);
+        $this->assertSame(10000.00, self::printedTotal($docs[0]['pdf']));
+    }
+
+    // ------------------------------------------------------- identity of each document
+
+    public function test_each_document_gets_its_own_number_and_media_period(): void
+    {
+        $docs = $this->batch()->export($this->row(array(
+            'note'                => '40194/40112',
+            'budget_all'          => 10000,
+            'split_quotation_nos' => array('2026/1701', '2026/1702'),
+            'split_periods'       => array('1 - 11 Sep 2026', '12 - 22 Sep 2026'),
+        )), $this->outDir());
+
+        $this->assertCount(2, $docs);
+        $this->assertNotSame($docs[0]['pdf'], $docs[1]['pdf']);
+
+        $first = self::pdfText($docs[0]['pdf']);
+        $second = self::pdfText($docs[1]['pdf']);
+        $this->assertStringContainsString('2026/1701', $first);
+        $this->assertStringContainsString('Boost post 1 - 11 Sep 2026', $first);
+        $this->assertStringContainsString('2026/1702', $second);
+        $this->assertStringContainsString('Boost post 12 - 22 Sep 2026', $second);
+    }
+
+    public function test_a_split_without_numbers_still_gets_unique_file_names(): void
+    {
+        $docs = $this->batch()->export($this->row(array(
+            'note'       => '40194/40112',
+            'budget_all' => 8000,
+        )), $this->outDir());
+
+        $this->assertCount(2, $docs);
+        $this->assertNotSame($docs[0]['xlsx'], $docs[1]['xlsx']);
+        $this->assertStringContainsString('2026-1658-1', basename($docs[0]['xlsx']));
+        $this->assertStringContainsString('2026-1658-2', basename($docs[1]['xlsx']));
+    }
+}

@@ -18,3 +18,18 @@ code/application/cache/
 code/application/views/_layout/templates_c/
 backups/
 exported_*/
+
+# Reference outputs from the original system are kept on purpose (golden samples
+# for the PDF gate). The generic rule above ignores the rest.
+!exported_from original system_20260925/
+!exported_from original system_20260925/**
+
+# Test tooling (the phar is committed on purpose: a DaCode worktree only contains
+# tracked files, and the gate runs inside a sandbox with no network to download it)
+code/.phpunit.cache/
+
+# LibreOffice leaves these next to any file it opens
+.~lock.*
+
+# Service account key for the Google Sheets import
+code/application/config/google-service-account.json

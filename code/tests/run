@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Run the quotation gate.
+#
+# The phar is committed next to the tests because the gate runs inside a sandbox that
+# hides $HOME and has no network: a download-on-first-use wrapper cannot work there.
+set -euo pipefail
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+PHAR="${PHPUNIT_PHAR:-$HERE/../tools/phpunit.phar}"
+
+if [ ! -f "$PHAR" ]; then
+    echo "phpunit.phar not found at $PHAR" >&2
+    echo "run code/tools/install-phpunit.sh once" >&2
+    exit 127
+fi
+
+exec php "$PHAR" -c "$HERE/../phpunit.xml" --no-coverage "$@"

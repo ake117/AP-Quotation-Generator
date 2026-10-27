@@ -23,6 +23,8 @@ class QuotationAP extends MX_Controller
     }
            
     function excel_search_col($worksheet, $coldata) {     
+        require_once APPPATH . 'libraries/QuotationBatch.php';
+
         // Columns that may be absent in older media plans (optional, filled with NULL)
         $optional = array('PURE MEDIA', 'BG', 'PERIOD');
         
@@ -32,10 +34,24 @@ class QuotationAP extends MX_Controller
         
         $highestColumn = $worksheet->getHighestColumn();
         $highestColumnIndex = PHPExcel_Cell::columnIndexFromString($highestColumn);               
+
+        // The PO Status file keeps its headers on row 4 (counters sit above them); an
+        // older media plan starts on row 1. Use whichever row names the most columns.
+        $headerRow = isset($coldata['header_row']) ? (int) $coldata['header_row'] : 0;
+        if ($headerRow < 1) {
+            $probe = array();
+            for ($probeRow = 1; $probeRow <= 8; $probeRow++) {
+                for ($probeCol = 1; $probeCol <= min($highestColumnIndex, 16384); $probeCol++) {
+                    $probe[$probeRow][$probeCol - 1] = $worksheet->getCell([$probeCol, $probeRow])->getValue();
+                }
+            }
+            $headerRow = QuotationBatch::headerRow($probe, array_keys($coldata['field']));
+        }
+
         for($col=1; $col<=$highestColumnIndex; $col++) {            
-            $colname = strtoupper(trim(($worksheet->getCell([$col, 1])->getValue()) ?? ''));   
+            $colname = strtoupper(trim(($worksheet->getCell([$col, $headerRow])->getValue()) ?? ''));  
             if (array_key_exists($colname, $coldata['field'])) {
-                $coldata['pos'][$colname] = $col-1;
+                $coldata['pos'][$colname] = $col-1;            
             }         
         }
 
@@ -46,6 +62,8 @@ class QuotationAP extends MX_Controller
                 unset($coldata['field'][$key]);
             }
         }
+
+        $coldata['header_row'] = $headerRow;
 
         if (array_search(999, $coldata['pos']) == false) {
             $coldata['error'] = false;
@@ -101,7 +119,9 @@ class QuotationAP extends MX_Controller
                     $coldata = $this->excel_search_col($worksheet, $coldata);
                     if ($coldata['error'] == false) {
                         $data_import = array();
-                        for($row=2; $row<=$highestRow; $row++) {
+                        $sheetWrites = array();
+                        $firstDataRow = (isset($coldata['header_row']) ? (int) $coldata['header_row'] : 1) + 1;
+                        for($row=$firstDataRow; $row<=$highestRow; $row++) {
                             $datarow = array();
                             $firstcol = '';
                             foreach ($coldata['pos'] as $colname => $colposition) {
@@ -116,20 +136,50 @@ class QuotationAP extends MX_Controller
                                 $datarow[$coldata['field'][$colname]] = trim(($val) ?? '');
                             }
                             
-                            if ($uploadFile == 'file_quotation_data') {
-                                $quotation_running++; 
-                                $quotation_year = date_format($inpt_quotation_date,"Y");
-                                $quotation_no = $quotation_year."/".str_pad($quotation_running, 4, '0', STR_PAD_LEFT);;                                        
-                                $datarow['quotation_no'] = $quotation_no;
-                                $objPHPExcel->setActiveSheetIndex($i)->getCell([$coldata['pos']['QT NO.']+1, $row])->setValue($quotation_no);
-                            }
 
                             if ($datarow[$firstcol] == '') { break; }
-                            $data_import[] = $datarow;          
+
+                            if ($uploadFile == 'file_quotation_data') {
+                                require_once APPPATH . 'libraries/QuotationBatch.php';
+
+                                $quotation_year = date_format($inpt_quotation_date,"Y");
+
+                                // One plan row can stand for several documents: the note
+                                // column lists a ProjectID each, so the row becomes that
+                                // many quotation rows with consecutive numbers (rows
+                                // 49/49 of the September sheet: 2026/1591, 2026/1592).
+                                $ids = QuotationBatch::projectIds((string) ($datarow['note'] ?? ''));
+                                $count = max(1, count($ids));
+                                $issued = QuotationBatch::consecutiveNumbers($quotation_year, $quotation_running, $count);
+                                $quotation_running = $issued['last'];
+
+                                $splitRows = QuotationBatch::splitRows($datarow, $issued['numbers']);
+
+                                // Written back to the sheet only after every row has been
+                                // read: inserting rows mid-loop would shift the ones still
+                                // to come.
+                                $sheetWrites[$row] = $splitRows;
+
+                                foreach ($splitRows as $splitRow) {
+                                    $data_import[] = $splitRow;
+                                }
+                            } else {
+                                $data_import[] = $datarow;
+                            }
                         }   
 //                        print_r("<pre>");
 //                        print_r($data_import);
 //                        print_r("</pre>");
+
+                        // Bottom-up, so an inserted row never moves a row still waiting.
+                        if (!empty($sheetWrites)) {
+                            require_once APPPATH . 'libraries/MediaPlanWriter.php';
+                            krsort($sheetWrites);
+                            foreach ($sheetWrites as $writeRow => $documents) {
+                                MediaPlanWriter::writeRow($worksheet, $writeRow, $documents, $coldata['pos'], $coldata['field']);
+                            }
+                        }
+
                         $this->quotation->insert_data($coldata['table'],$data_import);
                         
                         if ($uploadFile == 'file_quotation_data') {
@@ -250,7 +300,8 @@ class QuotationAP extends MX_Controller
             'BUDGET ALL'    => 'budget_all',
             'PURE MEDIA'    => 'media_cost',
             'BG'            => 'bg_key',
-            'PERIOD'        => 'period_text'
+            'PERIOD'        => 'period_text',
+            'NOTE'          => 'note'
         );        
         $result = $this->import_quotationAP('file_quotation_data', $filepath, $media_plan_worksheet, $coldata, $starttime, $result, $inpt_quotation_date, $quotation_running);
         
@@ -364,129 +415,248 @@ class QuotationAP extends MX_Controller
     
 
     public function export_quotationAP($filepath='')
-    {        
-        
-        $this->load->library('Excel');               
-        $path = realpath(dirname(__FILE__).'/../../../..').'/public_html/upload/quotation/ap/template/template.xlsx';
-        
-                
-        $quotation = $this->quotation->get_data();                        
+    {
+        require_once APPPATH . 'libraries/QuotationExporter.php';
+        require_once APPPATH . 'libraries/QuotationBatch.php';
+
+        $root = realpath(dirname(__FILE__).'/../../../..');
+        $template = $root.'/public_html/upload/quotation/ap/template/template.xlsx';
+
+        $quotation = $this->quotation->get_data();
+
         if ($quotation !== false) {
-            
+
             if ($filepath=='') {
-                $filepath = realpath(dirname(__FILE__).'/../../../..').'/public_html/upload/quotation/ap/Quotation/';
+                $filepath = $root.'/public_html/upload/quotation/ap/Quotation/';
             } else {
-                $filepath = realpath(dirname(__FILE__).'/../../../..').'/public_html/upload/'.$filepath.'/';
+                $filepath = $root.'/public_html/upload/'.$filepath.'/';
             }
-            
+
             if (!is_dir($filepath)) {
                 mkdir($filepath, 0777, TRUE);
             }
-            
-            
-            
-            
-            foreach ($quotation as $key => $value) {
-                
-                $quotation_date = date_create($value["quotation_date"]); 
-                $quotation_no = $value["quotation_no"];
-                $job_no = $value["job_no"];
-                $company_title = $value["company_title"];
-                $company_address = $value["company_address"];
-                
-                $detail = "Media Cost (".date_format($quotation_date,"F Y").")";
-                $detail_project = $value["project"];
-                $file_project = $value["project_file"];
-                $period_text = isset($value["period_text"]) ? trim($value["period_text"]) : '';
-                $detail_sub = ($period_text !== '') ? 'Boost post ' . $period_text : 'Boost post ' . trim($value["ad_format"]);
-                $budget = (float) $value["budget"];
-                $budget_all = (float) $value["budget_all"];
-                                
-                $objPHPExcel = PHPExcel_IOFactory::load($path);
-                        
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('K10', PHPExcel_Shared_Date::PHPToExcel($quotation_date));
-                $objPHPExcel->getActiveSheet()->getStyle("K10")->getNumberFormat()->setFormatCode(PHPExcel_Style_NumberFormat::FORMAT_DATE_XLSX15 );
 
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('K12', $quotation_no);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('K14', $job_no);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E10', $value["contact_name"]);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E11', $company_title);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E12', $company_address);
+            // Rendering lives in QuotationExporter so that the very code that writes
+            // a quotation can be exercised without CodeIgniter, a database or HTTP:
+            // see code/tests/QuotationExporterTest.php.
+            $exporter = new QuotationExporter(
+                $template,
+                $root.'/public_html/upload/quotation/ap/img/'
+            );
 
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E22', $detail);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E23', $detail_project);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('E24', $detail_sub);
+            // One plan row can become several documents (the usual case: one budget
+            // line split into equal documents) or one document holding several items.
+            // QuotationBatch decides; the renderer still writes a single quotation.
+            $batch = new QuotationBatch($exporter);
 
-                // Pure media from media plan (K24) + Agency Fee 11.5% block + BAHTTEXT formula
-                $media_cost = (float) $value["media_cost"];
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('K24', ($media_cost > 0) ? $media_cost : $budget);
+            // Numbers are counted for the month the quotations belong to; the rows carry
+            // their own date, so the first one speaks for the selection.
+            $firstRow = reset($quotation);
+            $dateSource = is_array($firstRow) && !empty($firstRow['quotation_date'])
+                ? $firstRow['quotation_date']
+                : date('Y-m-d');
+            $quotation_date = date_create($dateSource);
 
-                $feeFont = array(
-                    'font' => array(
-                        'name'   => 'CordiaUPC',
-                        'size'   => 14,
-                        'color'  => array('rgb' => '000000'),
-                        'italic' => false
-                    )
-                );
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('J47', ' Agency Fee 11.5%');
-                $objPHPExcel->setActiveSheetIndex(0)->getStyle('J47')->applyFromArray($feeFont);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('L47', '=L46*11.5/100');
-                $objPHPExcel->setActiveSheetIndex(0)->getStyle('L47')->applyFromArray($feeFont);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('L48', '=L46*(1+11.5/100)');
+            // A split row issues several documents, so it needs several numbers. They run
+            // on from the counter the import left behind (2026/1591, 2026/1592, …) and the
+            // counter is saved once, after the whole export, so a failure part-way through
+            // does not burn numbers that never printed.
+            $year = (int) date_format($quotation_date, 'Y');
 
-                //$objPHPExcel->setActiveSheetIndex(0)->setCellValue('L50', $budget_all);
-                $objPHPExcel->setActiveSheetIndex(0)->setCellValue('D50', '=_xlfn.BAHTTEXT(L50)');
-                
-                //$objPHPExcel->setActiveSheetIndex(0)->setCellValue('D50', '=BAHTTEXT(1999)');
+            // This month's counter first; a fresh month continues where the previous one
+            // stopped; and never below a number that is already on file.
+            $running = $this->quotation->get_quotationAP_running_exact($quotation_date);
+            if ($running === false) {
+                $running = $this->quotation->get_quotationAP_running($quotation_date);
+                $running = ($running === false) ? 0 : (int) $running;
+            }
+            $running = max($running, QuotationBatch::highestNumber(
+                $this->quotation->get_quotation_nos($year)
+            ));
 
-                //Save as an Excel BIFF (xls) file
+            foreach ($quotation as $value) {
+                $count = $batch->documentCount($value);
+                if ($count > 1 && empty($value['split_quotation_nos'])) {
+                    $issued = QuotationBatch::consecutiveNumbers($year, $running, $count);
+                    $value['split_quotation_nos'] = $issued['numbers'];
+                    $running = $issued['last'];
+                }
+                $batch->export($value, $filepath);
+            }
 
-                $versionExcel = "Xlsx"; // .xlsx only
-                $extFile = ".xlsx";
-                
-                $saveFileName = $quotation_no."_".$file_project;                
-                $saveFileName = $this->sanitize_text($saveFileName,'-');                
-                $saveFileNameFull = $saveFileName.$extFile;                
-                $pathSaveFile1 = $filepath.$saveFileNameFull;
-                
-                // Insert standard images (header logo, stamp, signatures) — mirrors APQT 2_image_change_2025.py
-                $this->insert_quotation_images($objPHPExcel);
-
-                $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel,$versionExcel);
-                
-                $objWriter->setPreCalculateFormulas(true);
-//                ob_end_clean();                                               
-                $objWriter->save($pathSaveFile1);
-
-                // Convert the quotation to PDF (LibreOffice headless) alongside the .xlsx
-                $this->convert_to_pdf($pathSaveFile1);
-                
-//                if ($key==2) { break; }
-                
-            }                        
-        }                                        
+            $this->quotation->update_quotationAP_running($quotation_date, $running);
+        }
     }
     
+    /**
+     * Import the month's quotations straight from the Google Sheet.
+     *
+     * No download, no upload: the tab named after the quotation month (0926, 1026, …) is
+     * read through the Sheets API, split into one row per ProjectID exactly like the file
+     * import does, inserted into the database with consecutive numbers, and the numbers are
+     * written back into the sheet so the team's PO Status file is already up to date.
+     */
+    public function import_from_google()
+    {
+        require_once APPPATH . 'libraries/GoogleSheetsClient.php';
+        require_once APPPATH . 'libraries/SheetTable.php';
+        require_once APPPATH . 'libraries/QuotationBatch.php';
+
+        $this->load->config('google');
+
+        $starttime = microtime(TRUE);
+        $result = array('status' => 'error', 'message' => '', 'process' => '');
+
+        $inpt_quotation_date = date_create($this->input->post('quotation_date'));
+        if (!$inpt_quotation_date) {
+            $result['message'] = 'quotation_date is missing';
+
+            return $this->output->set_content_type('application/json')->set_output(json_encode($result));
+        }
+
+        $quotation_year = (int) date_format($inpt_quotation_date, "Y");
+        $tab = date_format($inpt_quotation_date, "my");     // 0926, 1026, ...
+
+        $fields = array(
+            'PROJECT'       => 'project',
+            'BRIEFNAME'     => 'project_file',
+            'QT NO.'        => 'quotation_no',
+            'AD FORMAT'     => 'ad_format',
+            'BUDGET ALL'    => 'budget_all',
+            'PURE MEDIA'    => 'media_cost',
+            'BG'            => 'bg_key',
+            'PERIOD'        => 'period_text',
+            'NOTE'          => 'note',
+        );
+
+        try {
+            $client = new GoogleSheetsClient($this->config->item('google_service_account_json'));
+            $spreadsheetId = $this->config->item('google_spreadsheet_id');
+
+            $values = $client->getValues($spreadsheetId, "'" . $tab . "'!A1:AZ5000");
+            $table = SheetTable::read($values, $fields, array('PURE MEDIA', 'BG', 'PERIOD', 'NOTE'));
+
+            if (!empty($table['missing'])) {
+                $result['message'] = 'not found column ' . implode(', ', $table['missing']) . ' in tab ' . $tab;
+
+                return $this->output->set_content_type('application/json')->set_output(json_encode($result));
+            }
+
+            // Numbers run on from where the month (or the sheet itself) left off.
+            $running = $this->quotation->get_quotationAP_running_exact($inpt_quotation_date);
+            if ($running === false) {
+                $running = $this->quotation->get_quotationAP_running($inpt_quotation_date);
+                $running = ($running === false) ? 0 : (int) $running;
+            }
+            $running = max($running, QuotationBatch::highestNumber($this->quotation->get_quotation_nos($quotation_year)));
+
+            $data_import = array();
+            $writes = array();
+
+            foreach ($table['rows'] as $row) {
+                $ids = QuotationBatch::projectIds((string) ($row['note'] ?? ''));
+                $count = max(1, count($ids));
+                $issued = QuotationBatch::consecutiveNumbers($quotation_year, $running, $count);
+                $running = $issued['last'];
+
+                $documents = QuotationBatch::splitRows($row, $issued['numbers']);
+                $writes[$row['_row']] = $documents;
+
+                foreach ($documents as $document) {
+                    $data_import[] = $document;
+                }
+            }
+
+            if (empty($data_import)) {
+                $result['message'] = 'no rows found in tab ' . $tab;
+
+                return $this->output->set_content_type('application/json')->set_output(json_encode($result));
+            }
+
+            $this->quotation->insert_data('quotation_ap_data', $data_import);
+            $this->quotation->update_quotationAP_running($inpt_quotation_date, $running);
+
+            $result['process'] .= $this->showtime($starttime, "Insert: ");
+            $result['rows'] = count($data_import);
+
+            if ($this->config->item('google_write_back')) {
+                $result['write_back'] = $this->write_numbers_back($client, $spreadsheetId, $tab, $table, $writes);
+            }
+
+            $result['status'] = 'success';
+            $result['message'] = count($data_import) . ' quotations from tab ' . $tab;
+        } catch (Exception $e) {
+            $result['message'] = $e->getMessage();
+        }
+
+        return $this->output->set_content_type('application/json')->set_output(json_encode($result));
+    }
+
+    /**
+     * Put the numbers back where the rows came from: insert a row for every extra document
+     * and write the per-document columns. Runs bottom-up so an inserted row never shifts a
+     * row that is still waiting.
+     *
+     * @return array<int, string> what happened, per sheet row
+     */
+    private function write_numbers_back($client, $spreadsheetId, $tab, array $table, array $writes)
+    {
+        $perDocument = array(
+            'quotation_no' => 'QT NO.',
+            'project'      => 'PROJECT',
+            'project_file' => 'BRIEFNAME',
+            'note'         => 'NOTE',
+            'budget_all'   => 'BUDGET ALL',
+            'media_cost'   => 'PURE MEDIA',
+        );
+
+        $log = array();
+
+        try {
+            $sheetId = $client->sheetId($spreadsheetId, $tab);
+        } catch (Exception $e) {
+            return array('skipped: ' . $e->getMessage());
+        }
+
+        krsort($writes);
+
+        foreach ($writes as $sheetRow => $documents) {
+            $extra = count($documents) - 1;
+            if ($extra > 0) {
+                $client->insertRows($spreadsheetId, $sheetId, $sheetRow, $extra);
+            }
+
+            foreach ($perDocument as $key => $header) {
+                if (!isset($table['positions'][$header]) || $table['positions'][$header] === 999) {
+                    continue;
+                }
+
+                $values = array();
+                foreach ($documents as $document) {
+                    $values[] = array(isset($document[$key]) ? $document[$key] : '');
+                }
+
+                $range = SheetTable::columnRange($tab, (int) $table['positions'][$header], $sheetRow, $sheetRow + $extra);
+                $client->updateValues($spreadsheetId, $range, $values);
+            }
+
+            $log[] = 'row ' . $sheetRow . ': ' . count($documents) . ' document(s)';
+        }
+
+        return $log;
+    }
+
     /**
      * Convert an .xlsx file to PDF using LibreOffice headless.
      * The PDF is written next to the source file. Returns true on success.
      */
     function convert_to_pdf($xlsx_path)
     {
-        if (!file_exists($xlsx_path)) {
-            return false;
-        }
+        require_once APPPATH . 'libraries/QuotationExporter.php';
+        $root = realpath(dirname(__FILE__).'/../../../..');
+        $exporter = new QuotationExporter('', $root.'/public_html/upload/quotation/ap/img/');
 
-        $dir = dirname($xlsx_path);
-        $cmd = 'soffice --headless --norestore --convert-to pdf --outdir '
-             . escapeshellarg($dir) . ' ' . escapeshellarg($xlsx_path)
-             . ' 2>&1';
-
-        exec($cmd, $output, $exitCode);
-
-        $pdf = substr($xlsx_path, 0, -5) . '.pdf';
-        return ($exitCode === 0 && file_exists($pdf));
+        return $exporter->convertToPdf($xlsx_path) !== null;
     }
 
     /**
@@ -495,35 +665,11 @@ class QuotationAP extends MX_Controller
      */
     function insert_quotation_images($objPHPExcel)
     {
-        $imgPath = realpath(dirname(__FILE__).'/../../../..').'/public_html/upload/quotation/ap/img/';
-        if (!is_dir($imgPath)) {
-            return;
-        }
+        require_once APPPATH . 'libraries/QuotationExporter.php';
+        $root = realpath(dirname(__FILE__).'/../../../..');
+        $exporter = new QuotationExporter('', $root.'/public_html/upload/quotation/ap/img/');
 
-        $sheet = $objPHPExcel->getActiveSheet();
-
-        // Wipe any existing images in the template
-        $sheet->getDrawingCollection()->exchangeArray(array());
-
-        $images = array(
-            array('file' => 'ewit_resizeto_075x110in-and_140x100in.png', 'width' => 71.25, 'height' => 104.5, 'anchor' => 'A2'),
-            array('file' => 'signature_or_resizeto_126x070in.png',       'width' => 113.4, 'height' => 63.0,  'anchor' => 'G55'),
-            array('file' => 'ewit_logo-stamp_2025v2_075x116in.png',      'width' => 75.0,  'height' => 116.4, 'anchor' => 'I53'),
-            array('file' => 'signature_ake_resizeto_137x079in.png',      'width' => 123.3, 'height' => 71.1,  'anchor' => 'K55'),
-        );
-
-        foreach ($images as $img) {
-            $file = $imgPath.$img['file'];
-            if (!file_exists($file)) continue;
-
-            $drawing = new \PhpOffice\PhpSpreadsheet\Worksheet\Drawing();
-            $drawing->setName(pathinfo($file, PATHINFO_FILENAME));
-            $drawing->setPath($file);
-            $drawing->setHeight($img['height']);
-            $drawing->setWidth($img['width']);
-            $drawing->setCoordinates($img['anchor']);
-            $drawing->setWorksheet($sheet);
-        }
+        $exporter->insertImages($objPHPExcel);
     }
 
     /**
@@ -541,10 +687,9 @@ class QuotationAP extends MX_Controller
         $xlsxZipName = "{$folder}.zip";
         $pdfZipName  = "{$folder}_pdf.zip";
 
-        // Remove media plan files from the temp dir (not part of any zip)
-        foreach (glob($filepath."Mediaplan*") as $mediaplanFile) {
-            @unlink($mediaplanFile);
-        }
+        // The media plan now travels back with the quotations: it carries the QT numbers
+        // the import wrote, one row per document, so the team can paste it straight into
+        // the PO Status file.
 
         $xlsxZip = new ZipArchive;
         $pdfZip  = new ZipArchive;
