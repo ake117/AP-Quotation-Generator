@@ -145,9 +145,6 @@
                                             {ci_language line="mod_mainoptions" default='MAIN OPTIONS'}
                                         </li>
 
-					<li {if $activelink==='dashboard'}class="active"{/if} >
-                                            <a href="{$base_url}/admin/dashboard"><i class="fa fa-dashboard"></i> <span>{ci_language line="mod_dashboard" default='Dashboard'}</span></a>
-					</li>
 					{if wpn_link_permission('admin/posts') }
 						<li {if $activelink==='posts'}class="active"{/if}>
                                                     <a href="{$base_url}/admin/posts"><i class="fa fa-files-o"></i> <span>{ci_language line="mod_post" default='Posts'}</span></a>

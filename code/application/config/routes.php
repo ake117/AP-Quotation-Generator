@@ -52,7 +52,7 @@ $route['translate_uri_dashes'] = false;
 |		my-controller/my-method	-> my_controller/my_method
 */
 $route['default_controller']    = 'grandeasset';
-$route['admin'] 				= 'admin/dashboard';
+$route['admin'] 				= 'admin/quotationAP';
 $route['admin/login']			= 'admin/logon/index';
 $route['admin/logout']			= 'admin/logon/out';
 $route['admin/recovery']		= 'admin/logon/recovery';

@@ -8,7 +8,7 @@
         <small>Manage user accounts here.</small>
     </h1>
     <ol class="breadcrumb">
-        <li><a href="{site_url url="admin/dashboard"}"><i class="fa fa-dashboard"></i> Dashboard</a></li>
+        
         <li><a href="{site_url url="admin/accounts"}"><i class="fa fa-users"></i> User account</a></li>
         <li>Change user account</li>
     </ol>

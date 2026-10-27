@@ -7,7 +7,7 @@
         <small>Manage the {ci_language line="mod_project_room"} displayed on the site here.</small>
     </h1>
     <ol class="breadcrumb">
-        <li><a href="{site_url url="admin/dashboard"}"><i class="fa fa-dashboard"></i> Dashboard</a></li>
+        
         <li><a href="{site_url url="admin/rooms"}"><i class="fa fa-building" aria-hidden="true"></i> {ci_language line="mod_project_room"}</a></li>
         <li>Edit {ci_language line="mod_project_room"}</li>
     </ol>

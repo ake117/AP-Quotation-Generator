@@ -8,7 +8,7 @@
         <small>Manage Projects here.</small>
     </h1>
     <ol class="breadcrumb">
-        <li><a href="{site_url url="admin/dashboard"}"><i class="fa fa-dashboard"></i> {ci_language line="mod_dashboard"}</a></li>
+        
         <li><i class="fa fa-users"></i> {ci_language line="mod_projects" default='Projects'}</li>
     </ol>
 </section>

@@ -11,7 +11,7 @@
         <small>Export your Agents Booking</small>
     </h1>
     <ol class="breadcrumb">
-        <li><a href="{site_url url="admin/dashboard"}"><i class="fa fa-dashboard"></i> Dashboard</a></li>
+        
         <li><i class="fa fa-envelope-o"></i> Agents Booking</li>
     </ol>
 </section>

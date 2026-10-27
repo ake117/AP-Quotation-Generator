@@ -8,7 +8,7 @@
         <small>Manage the Project banner displayed on the site here.</small>
     </h1>
     <ol class="breadcrumb">
-        <li><a href="{site_url url="admin/dashboard"}"><i class="fa fa-dashboard"></i> Dashboard</a></li>
+        
         <li><i class="fa fa-picture-o" aria-hidden="true"></i> {ci_language line="mod_project_banner"}</li>
     </ol>
 </section>

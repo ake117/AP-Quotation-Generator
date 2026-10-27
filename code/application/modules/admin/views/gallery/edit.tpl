@@ -7,7 +7,7 @@
         <small>Manage the {ci_language line="mod_gallery"} displayed on the site here.</small>
     </h1>
     <ol class="breadcrumb">
-        <li><a href="{site_url url="admin/dashboard"}"><i class="fa fa-dashboard"></i> Dashboard</a></li>
+        
         <li><a href="{site_url url="admin/gallery"}"><i class="fa fa-picture-o" aria-hidden="true"></i> {ci_language line="mod_gallery"}</a></li>
         <li>Edit {ci_language line="mod_gallery"}</li>
     </ol>

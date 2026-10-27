@@ -8,7 +8,7 @@
         <small>Export your Booking</small>
     </h1>
     <ol class="breadcrumb">
-        <li><a href="{site_url url="admin/dashboard"}"><i class="fa fa-dashboard"></i> Dashboard</a></li>
+        
         <li><i class="fa fa-envelope-o"></i> Booking</li>
     </ol>
 </section>

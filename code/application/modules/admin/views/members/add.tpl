@@ -7,7 +7,7 @@
         <small>Manage Members here.</small>
     </h1>
     <ol class="breadcrumb">
-        <li><a href="{site_url url="admin/dashboard"}"><i class="fa fa-dashboard"></i> {ci_language line="mod_dashboard"}</a></li>
+        
         <li><a href="{site_url url="admin/members"}"><i class="fa fa-users"></i> {ci_language line="mod_members" default='Members'}</a></li>
         <li>Create user member</li>
     </ol>

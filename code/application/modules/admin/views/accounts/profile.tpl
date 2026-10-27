@@ -8,7 +8,7 @@
         <small>Keep your data always up to date.</small>
     </h1>
     <ol class="breadcrumb">
-        <li><a href="{site_url url="admin/dashboard"}"><i class="fa fa-dashboard"></i> Dashboard</a></li>
+        
         <li>{ci_language line="mod_profile"}</li>
     </ol>
 </section>
@@ -84,7 +84,7 @@
                 <div class="row">
                     <div class="col-md-12">
                         <button type="submit" name="submit" class="btn btn-primary">Save changes</button>
-                        <a href="{site_url url="admin/dashboard"}" class="btn btn-danger">Cancel</a>
+                        <a href="{site_url url="admin/accounts"}" class="btn btn-danger">Cancel</a>
                     </div>
                 </div>
             </form>
