@@ -51,7 +51,7 @@
                 <div class="col-md-12 column">
                     <h3 class="box-title">List of Quotation</h3>
                     <div class="box-tools pull-right">
-                        <a href="{site_url url="admin/quotation/add"}" class="btn btn-sm btn-primary"><span class="glyphicon glyphicon-plus-sign"></span>New Quotation</a>
+                        <a href="{$base_url}/admin/quotation/add" class="btn btn-sm btn-primary"><span class="glyphicon glyphicon-plus-sign"></span>New Quotation</a>
                     </div>
                 </div>
             </div>
@@ -81,7 +81,7 @@
                               <td>{$row->quotation_status}</td>
                               <td>{$row->pm_member_id}</td>
                               <td>{$row->actions}</td>
-                              <td><a href="{site_url url="admin/quotation/export"}/{$row->quotation_id}" class="btn btn-sm btn-primary link_export"><span class="glyphicon glyphicon-download"></span> Export</a></td>
+                              <td><a href="{$base_url}/admin/quotation/export/{$row->quotation_id}" class="btn btn-sm btn-primary link_export"><span class="glyphicon glyphicon-download"></span> Export</a></td>
                               <td>{$row->create_date}</td>
                             </tr>
                         {/foreach}

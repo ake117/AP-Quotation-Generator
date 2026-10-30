@@ -9,7 +9,7 @@
     </h1>
     <ol class="breadcrumb">
         
-        <li><a href="{site_url url="admin/quotation"}"><i class="fa fa-users"></i> {ci_language line="mod_useraccount"}</a></li>
+        <li><a href="{$base_url}/admin/quotation"><i class="fa fa-users"></i> {ci_language line="mod_useraccount"}</a></li>
         <li>Edit Quotation</li>
     </ol>
 </section>
@@ -20,7 +20,7 @@
             <h3 class="box-title">Edit Quotation</h3>
         </div>
         <div class="box-body">
-              <form action="{site_url url="admin/quotation/edit/{$row.quotation_id}"}" role="form" enctype="multipart/form-data" method="post" accept-charset="utf-8">
+              <form action="{$base_url}/admin/quotation/edit/{$row.quotation_id}" role="form" enctype="multipart/form-data" method="post" accept-charset="utf-8">
                 <ul class="nav nav-pills" role="tablist" style="margin-bottom:20px;">
                 </ul>
                 <div class="tab-content">
@@ -229,9 +229,9 @@
                     <div class="col-md-6">
                         {if $row.quotation_status != 'approved'}
                             <button type="submit" name="submit" class="btn btn-primary">Save</button>
-                            <a class="btn btn-danger" href='{site_url url="admin/quotation"}'>Cancel</a>
+                            <a class="btn btn-danger" href='{$base_url}/admin/quotation'>Cancel</a>
                         {else}
-                            <a class="btn btn-danger" href='{site_url url="admin/quotation"}'>Back</a>
+                            <a class="btn btn-danger" href='{$base_url}/admin/quotation'>Back</a>
                         {/if}
                     </div>
                 </div>
