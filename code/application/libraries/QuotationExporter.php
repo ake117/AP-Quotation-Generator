@@ -56,7 +56,7 @@ class QuotationExporter
      * @param string $outDir directory for the output files, created when missing
      * @return array{xlsx:string,pdf:?string}
      */
-    public function export(array $row, string $outDir): array
+    public function export(array $row, string $outDir, bool $convertPdf = true): array
     {
         if (!is_dir($outDir)) {
             mkdir($outDir, 0777, true);
@@ -71,7 +71,7 @@ class QuotationExporter
         $writer->setPreCalculateFormulas(true);
         $writer->save($xlsx);
 
-        $pdf = $this->convertToPdf($xlsx);
+        $pdf = $convertPdf ? $this->convertToPdf($xlsx) : null;
 
         return array('xlsx' => $xlsx, 'pdf' => $pdf);
     }
@@ -219,6 +219,33 @@ class QuotationExporter
         return $spreadsheet;
     }
 
+    /**
+     * Resolve the soffice / libreoffice binary path.
+     */
+    public static function sofficeBinary(): string
+    {
+        DotEnv::load();
+
+        $env = getenv('SOFFICE_PATH') ?: (getenv('LIBREOFFICE_PATH') ?: ($_ENV['SOFFICE_PATH'] ?? ($_ENV['LIBREOFFICE_PATH'] ?? null)));
+        if (!empty($env) && file_exists($env)) {
+            return $env;
+        }
+
+        $candidates = array(
+            'C:\\Program Files\\LibreOffice\\program\\soffice.exe',
+            'C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe',
+            '/usr/bin/soffice',
+            '/usr/local/bin/soffice',
+        );
+        foreach ($candidates as $cand) {
+            if (file_exists($cand)) {
+                return $cand;
+            }
+        }
+
+        return 'soffice';
+    }
+
     /** Convert an .xlsx to PDF next to it, using LibreOffice headless. */
     public function convertToPdf(string $xlsxPath): ?string
     {
@@ -227,9 +254,16 @@ class QuotationExporter
         }
 
         $dir = dirname($xlsxPath);
-        $cmd = 'soffice --headless --norestore --convert-to pdf --outdir '
-             . escapeshellarg($dir) . ' ' . escapeshellarg($xlsxPath)
-             . ' 2>&1';
+        $binary = self::sofficeBinary();
+
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            // Windows cmd.exe: wrap command to avoid outer quote stripping
+            $cmd = 'cmd /c ""' . $binary . '" --headless --norestore --convert-to pdf --outdir '
+                 . escapeshellarg($dir) . ' ' . escapeshellarg($xlsxPath) . '" 2>&1';
+        } else {
+            $cmd = escapeshellcmd($binary) . ' --headless --norestore --convert-to pdf --outdir '
+                 . escapeshellarg($dir) . ' ' . escapeshellarg($xlsxPath) . ' 2>&1';
+        }
 
         exec($cmd, $output, $exitCode);
 

@@ -280,7 +280,9 @@ class QuotationAP extends MX_Controller
         $job_no = date_format($inpt_quotation_date,"ym")."02AP";
         $media_plan_worksheet = date_format($inpt_quotation_date,"my");
         
-        $quotation_running = $this->input->post('quotation_running');                 
+        $quotation_running = $this->input->post('quotation_running');
+        $export_type       = $this->input->post('export_type');
+        $convert_pdf       = ($export_type !== 'excel');                 
         
         $filefolder = date('Ymdhis');                
         $filepath = "quotation/ap/temp/".$filefolder;
@@ -339,16 +341,16 @@ class QuotationAP extends MX_Controller
         //}
                 
         //if ($result["status"] == 'success') {
-            $this->export_quotationAP($filepath); 
+            $this->export_quotationAP($filepath, $convert_pdf); 
             $result['process'] .= $this->showtime($starttime, "Export: ");
             
-            $archive = $this->zip_quotationAP($filefolder);
+            $archive = $this->zip_quotationAP($filefolder, $convert_pdf);
             $result['process'] .= $this->showtime($starttime, "Zip: ");
             
             //$archive = $this->zip_quotationAP("20201228070826");
             
             $pdfZipPath = FCPATH."upload/quotation/ap/archive/Quotation_{$filefolder}_pdf.zip";
-            $pdfLink = (file_exists($pdfZipPath) && filesize($pdfZipPath) > 0)
+            $pdfLink = ($convert_pdf && file_exists($pdfZipPath) && filesize($pdfZipPath) > 0)
                 ? " | <a href='/upload/quotation/ap/archive/Quotation_{$filefolder}_pdf.zip'>PDF</a>"
                 : "";
             $result["message"] = $result["message"]."<br>Download <a href='{$archive}'>Quotation</a>".$pdfLink;
@@ -438,7 +440,7 @@ class QuotationAP extends MX_Controller
     }
     
 
-    public function export_quotationAP($filepath='')
+    public function export_quotationAP($filepath='', $convert_pdf=true)
     {
         require_once APPPATH . 'libraries/QuotationExporter.php';
         require_once APPPATH . 'libraries/QuotationBatch.php';
@@ -511,7 +513,7 @@ class QuotationAP extends MX_Controller
                     $value['split_quotation_nos'] = $issued['numbers'];
                     $running = $issued['last'];
                 }
-                $batch->export($value, $filepath);
+                $batch->export($value, $filepath, $convert_pdf);
             }
 
             $this->quotation->update_quotationAP_running($quotation_date, $running);
@@ -711,7 +713,7 @@ class QuotationAP extends MX_Controller
      *  - {folder}_pdf.zip      : PDF files only (filled when PDF conversion runs)
      * Media plan files are removed from the temp dir instead of being zipped.
      */
-    function zip_quotationAP($folder="") {
+    function zip_quotationAP($folder="", $convert_pdf=true) {
 
         $filepath    = FCPATH."upload/quotation/ap/temp/{$folder}/";
         $archivepath = FCPATH."upload/quotation/ap/archive/";
@@ -728,7 +730,7 @@ class QuotationAP extends MX_Controller
         $pdfZip  = new ZipArchive;
 
         $xlsxZipOk = $xlsxZip->open($archivepath.$xlsxZipName, ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE) === TRUE;
-        $pdfZipOk  = $pdfZip->open($archivepath.$pdfZipName,  ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE) === TRUE;
+        $pdfZipOk  = $convert_pdf && ($pdfZip->open($archivepath.$pdfZipName,  ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE) === TRUE);
 
         $xlsxCount = 0;
         $pdfCount  = 0;
@@ -759,7 +761,12 @@ class QuotationAP extends MX_Controller
             }
 
             if ($xlsxZipOk) { $xlsxZip->close(); }
-            if ($pdfZipOk)  { $pdfZip->close(); }
+            if ($pdfZipOk)  { 
+                $pdfZip->close(); 
+                if ($pdfCount === 0 && file_exists($archivepath.$pdfZipName)) {
+                    @unlink($archivepath.$pdfZipName);
+                }
+            }
 
             array_map('unlink', glob("{$filepath}/*.*"));
             @rmdir($filepath);

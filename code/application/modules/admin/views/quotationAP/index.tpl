@@ -60,6 +60,23 @@
                                     <input type="text" id="quotation_running" name="quotation_running" autocomplete="off" value="" class="form-control">                                    
                                 </div>
                             </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group" style="margin-top: 5px; margin-bottom: 20px;">
+                                    <label style="font-weight: 600; margin-bottom: 8px;">รูปแบบไฟล์ที่ต้องการ Export:</label>
+                                    <div>
+                                        <label class="radio-inline" style="font-weight: 500; cursor: pointer; margin-right: 25px;">
+                                            <input type="radio" name="export_type" id="export_type_both" value="both" checked>
+                                            <i class="fa fa-file-pdf-o text-danger"></i> <strong>Excel + PDF</strong> (แปลงเป็นไฟล์ PDF ด้วย)
+                                        </label>
+                                        <label class="radio-inline" style="font-weight: 500; cursor: pointer;">
+                                            <input type="radio" name="export_type" id="export_type_excel" value="excel">
+                                            <i class="fa fa-file-excel-o text-success"></i> <strong>เฉพาะไฟล์ Excel</strong> (รวดเร็วกว่า ไม่แปลงเป็น PDF)
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                         </div>    
                         <button type="" name="btn_upload1" class="btn btn-primary">Process</button>
                         <button type="" name="btn_export1" class="btn btn-primary" style="display:none">Export</button>

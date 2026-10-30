@@ -50,7 +50,7 @@ final class QuotationBatch
     /**
      * @return array<int, array{xlsx: string, pdf: string}> one entry per document
      */
-    public function export(array $row, string $outDir): array
+    public function export(array $row, string $outDir, bool $convertPdf = true): array
     {
         $ids = self::projectIds((string) ($row['note'] ?? ''));
         $count = $this->documentCount($row);
@@ -58,7 +58,7 @@ final class QuotationBatch
         if ($count === 1) {
             // No split: the row keeps its own money path (PURE MEDIA is searched so the
             // total prints round) and only borrows the name of its ProjectID.
-            return array($this->exporter->export($this->withProjectName($row, $ids[0] ?? null), $outDir));
+            return array($this->exporter->export($this->withProjectName($row, $ids[0] ?? null), $outDir, $convertPdf));
         }
 
         $amounts = $this->shares($row, $count);
@@ -67,7 +67,8 @@ final class QuotationBatch
         foreach ($amounts as $index => $amount) {
             $documents[] = $this->exporter->export(
                 $this->documentFor($row, $index, $amount, $ids[$index] ?? null),
-                $outDir
+                $outDir,
+                $convertPdf
             );
         }
 
