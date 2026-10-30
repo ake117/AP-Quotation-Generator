@@ -1,7 +1,7 @@
 {include file="header.tpl"}
 {ci_config name="base_url"}
 {ci_language file="wpn_common" lang="$lang"}
-<link rel="stylesheet" href="//code.jquery.com/ui/1.12.1/themes/base/jquery-ui.css">
+<link rel="stylesheet" href="{$base_url}/lib/plugins/jQueryUI/jquery-ui.css">
 <section class="content-header">
     <h1>
         Quotation
