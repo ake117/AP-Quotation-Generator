@@ -1,5 +1,3 @@
-.env
-code/.env
 # Environment & Keys
 .cache/
 .gnupg/
