@@ -711,6 +711,102 @@ class QuotationAP extends MX_Controller
      * The PDF is written next to the source file. Returns true on success.
      */
     /**
+     * Resolve a host or container path to an existing filesystem path inside the environment.
+     */
+    public static function resolve_fs_path($path)
+    {
+        $path = trim(trim($path), "\"'");
+        if (empty($path)) {
+            return '';
+        }
+
+        if (file_exists($path)) {
+            return realpath($path) ?: $path;
+        }
+
+        $clean = str_replace('\\', '/', $path);
+        if (file_exists($clean)) {
+            return realpath($clean) ?: $clean;
+        }
+
+        // If running in Docker / Linux and received a Windows drive path e.g. C:\...
+        if (preg_match('/^[a-zA-Z]:\/(.*)$/i', $clean, $m)) {
+            $sub = $m[1];
+            $candidates = array(
+                '/' . ltrim($sub, '/'),
+                '/' . strtolower($path[0]) . '/' . ltrim($sub, '/'),
+                '/host_' . strtolower($path[0]) . '/' . ltrim($sub, '/'),
+                '/mnt/' . strtolower($path[0]) . '/' . ltrim($sub, '/'),
+            );
+            foreach ($candidates as $cand) {
+                if (file_exists($cand)) {
+                    return realpath($cand) ?: $cand;
+                }
+            }
+        }
+
+        // Check if matching /_quotation_script
+        $pos = stripos($clean, '_quotation_script');
+        if ($pos !== false) {
+            $cand = '/' . substr($clean, $pos);
+            if (file_exists($cand)) {
+                return realpath($cand) ?: $cand;
+            }
+        }
+
+        // Relative path candidates within FCPATH or project
+        $candidates = array(
+            FCPATH . ltrim($clean, '/'),
+            FCPATH . 'upload/' . ltrim($clean, '/'),
+            FCPATH . 'upload/quotation/ap/' . ltrim($clean, '/'),
+            FCPATH . 'upload/quotation/ap/temp/' . ltrim($clean, '/'),
+            FCPATH . 'upload/quotation/ap/archive/' . ltrim($clean, '/'),
+            realpath(dirname(__FILE__).'/../../../..') . '/' . ltrim($clean, '/'),
+        );
+        foreach ($candidates as $cand) {
+            if (file_exists($cand)) {
+                return realpath($cand) ?: $cand;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve output directory for PDF files.
+     */
+    public static function resolve_output_dir($output_path, $source_resolved)
+    {
+        $output_path = trim(trim($output_path), "\"'");
+        if (empty($output_path)) {
+            if (is_dir($source_resolved)) {
+                return $source_resolved;
+            } elseif (is_file($source_resolved)) {
+                return dirname($source_resolved);
+            }
+            $def = FCPATH . 'upload/quotation/ap/pdf/';
+            if (!is_dir($def)) { @mkdir($def, 0777, true); }
+            return realpath($def) ?: $def;
+        }
+
+        $clean = str_replace('\\', '/', $output_path);
+
+        // If Windows path in Docker/Linux
+        if (preg_match('/^[a-zA-Z]:\/(.*)$/i', $clean, $m)) {
+            $sub = $m[1];
+            $clean = '/' . ltrim($sub, '/');
+        } elseif (stripos($clean, '_quotation_script') !== false) {
+            $clean = '/' . substr($clean, stripos($clean, '_quotation_script'));
+        }
+
+        if (!is_dir($clean)) {
+            @mkdir($clean, 0777, true);
+        }
+
+        return realpath($clean) ?: $clean;
+    }
+
+    /**
      * Convert existing quotation Excel files from a specified directory, file, or zip to PDF.
      * Directly outputs PDF files into the specified output path without creating a ZIP archive.
      */
@@ -719,72 +815,27 @@ class QuotationAP extends MX_Controller
         require_once APPPATH . 'libraries/QuotationExporter.php';
         $result = array('status' => 'error', 'message' => '', 'process' => '');
 
-        $source_path = trim(trim($source_path), "\"'");
-        $output_path = trim(trim($output_path), "\"'");
+        $raw_source = trim(trim($source_path), "\"'");
+        $raw_output = trim(trim($output_path), "\"'");
 
-        if (empty($source_path)) {
+        if (empty($raw_source)) {
             $result['message'] = "กรุณาระบุ Path ของโฟลเดอร์หรือไฟล์ Quotation (Excel) ต้นทาง";
             return $result;
         }
 
         // 1. Resolve source path
-        $resolved_source = null;
-        if (file_exists($source_path)) {
-            $resolved_source = realpath($source_path);
-        } else {
-            $candidates = array(
-                FCPATH . ltrim($source_path, '/\\'),
-                FCPATH . 'upload/' . ltrim($source_path, '/\\'),
-                FCPATH . 'upload/quotation/ap/' . ltrim($source_path, '/\\'),
-                FCPATH . 'upload/quotation/ap/temp/' . ltrim($source_path, '/\\'),
-                FCPATH . 'upload/quotation/ap/archive/' . ltrim($source_path, '/\\'),
-                realpath(dirname(__FILE__).'/../../../..') . '/' . ltrim($source_path, '/\\'),
-            );
-            foreach ($candidates as $cand) {
-                if (file_exists($cand)) {
-                    $resolved_source = realpath($cand);
-                    break;
-                }
-            }
-        }
+        $resolved_source = self::resolve_fs_path($raw_source);
 
         if (!$resolved_source || !file_exists($resolved_source)) {
-            $result['message'] = "ไม่พบไฟล์หรือโฟลเดอร์ต้นทางตาม path ที่ระบุ: " . htmlspecialchars($source_path);
+            $result['message'] = "ไม่พบไฟล์หรือโฟลเดอร์ต้นทางตาม path ที่ระบุ: " . htmlspecialchars($raw_source);
             return $result;
         }
 
         // 2. Resolve output directory
-        $target_output_dir = null;
-        if (!empty($output_path)) {
-            if (!is_dir($output_path)) {
-                @mkdir($output_path, 0777, true);
-            }
-            if (is_dir($output_path)) {
-                $target_output_dir = realpath($output_path) ?: $output_path;
-            } else {
-                $cand_out = FCPATH . ltrim($output_path, '/\\');
-                if (!is_dir($cand_out)) {
-                    @mkdir($cand_out, 0777, true);
-                }
-                $target_output_dir = realpath($cand_out) ?: $cand_out;
-            }
-        } else {
-            // Default output directory: same directory as input if it's a directory
-            if (is_dir($resolved_source)) {
-                $target_output_dir = $resolved_source;
-            } elseif (is_file($resolved_source) && strtolower(substr($resolved_source, -5)) === '.xlsx') {
-                $target_output_dir = dirname($resolved_source);
-            } else {
-                // If input is a ZIP and no output_path given, create a folder next to it
-                $target_output_dir = dirname($resolved_source) . DIRECTORY_SEPARATOR . 'pdf_' . basename($resolved_source, '.zip');
-                if (!is_dir($target_output_dir)) {
-                    @mkdir($target_output_dir, 0777, true);
-                }
-            }
-        }
+        $target_output_dir = self::resolve_output_dir($raw_output, $resolved_source);
 
         if (!$target_output_dir || !is_dir($target_output_dir)) {
-            $result['message'] = "ไม่สามารถสร้างหรือเข้าถึง Output Path ที่ระบุได้: " . htmlspecialchars($output_path);
+            $result['message'] = "ไม่สามารถสร้างหรือเข้าถึง Output Path ที่ระบุได้: " . htmlspecialchars($raw_output);
             return $result;
         }
 
@@ -854,9 +905,12 @@ class QuotationAP extends MX_Controller
 
         $result['process'] .= $this->showtime($starttime, "PDF Conversion ({$converted_count}/" . count($files_to_convert) . "): ");
 
+        // User-friendly display path
+        $display_out = !empty($raw_output) ? $raw_output : $raw_source;
+
         if ($converted_count > 0) {
             $result['status'] = 'success';
-            $result['message'] = "แปลงไฟล์ PDF สำเร็จทั้งหมด <strong>{$converted_count}</strong> ไฟล์<br>📁 บันทึกไฟล์ไว้ที่: <code>" . htmlspecialchars($target_output_dir) . "</code>";
+            $result['message'] = "แปลงไฟล์ PDF สำเร็จทั้งหมด <strong>{$converted_count}</strong> ไฟล์<br>📁 บันทึกไฟล์ไว้ที่: <code>" . htmlspecialchars($display_out) . "</code>";
         } else {
             $result['status'] = 'error';
             $result['message'] = "แปลง PDF ไม่สำเร็จ (แปลงได้ 0 จาก " . count($files_to_convert) . " ไฟล์) กรุณาตรวจสอบการติดตั้ง LibreOffice";

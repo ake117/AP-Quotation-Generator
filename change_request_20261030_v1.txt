@@ -4,3 +4,4 @@ AP Quotation Generator - Change Request
 - [x] อยากได้ option เลือกว่าเอาเฉพาะ excel ไฟล์ หรือ pdf ด้วย
 - [x] ข้างหน้าไฟล์ zip ให้ใส่ "Quotation_"
 - [x] ขออีก option "PDF" อย่างเดียว โดยให้ user ระบุ path ของ quotation (excel) และ output path (ไม่จำเป็นต้องทำเป็น zip)
+- [ ] เอา favicon ออก

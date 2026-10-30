@@ -58,6 +58,7 @@ BG_CONTACT_TH="คุณณัฐวรรธน์ โต๊ะดอนทอ�
 ```bash
 docker run -d --name qt_app --add-host=host.docker.internal:host-gateway \
   -p 8091:8091 -e DB_HOST=host.docker.internal \
+  -v C:/_quotation_script:/_quotation_script \
   -v C:/_quotation_script/AP_QT_Generator/code:/app -w /app \
   qt_app_img php -S 0.0.0.0:8091 -t public_html
 
