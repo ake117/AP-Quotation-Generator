@@ -1,319 +1,167 @@
 # AP Quotation Generator
 
-## ระบบสร้าง/จัดการใบเสนอราคา (Quotation) สำหรับงานโฆษณา Boost Post ของ AP (Thailand) 
-### พัฒนาต่อยอดบน CodeIgniter wpanel, originally developed by Chat
+ระบบสร้างและจัดการใบเสนอราคา (Quotation) สำหรับงานโฆษณา Boost Post ของ AP (Thailand) พัฒนาต่อยอดบน CodeIgniter 3 รองรับการทำงานร่วมกับ Google Sheets, คำนวณภาษี/ส่วนแบ่งโครงการอัตโนมัติ และแปลงเอกสารเป็น Excel/PDF พร้อมใช้งานทันที
+
+[![Release](https://img.shields.io/badge/Release-v1.26--production--ready-brightgreen.svg)](https://github.com/ake117/AP-Quotation-Generator/releases/tag/v1.26)
+[![PHP](https://img.shields.io/badge/PHP-8.3-blue.svg)](https://www.php.net/)
+[![PhpSpreadsheet](https://img.shields.io/badge/PhpSpreadsheet-5.10-orange.svg)](https://phpspreadsheet.readthedocs.io/)
+[![Database](https://img.shields.io/badge/MySQL-8.0%20(utf8mb4)-blue.svg)](https://www.mysql.com/)
+
 ---
 
-## ข้อมูลโปรเจกต์
+## 📌 สรุปข้อมูลโปรเจกต์ (Project Overview)
 
 | รายการ | รายละเอียด |
 |---|---|
-| Repo | `ake117/AP-Quotation-Generator` (private, branch `main`; เดิมชื่อ `AP_Quotation_by_Chat`) |
-| Local path | `C:\_quotation_script\AP_QT_Generator` (เดิม `...\QT_Generator`, เปลี่ยนชื่อ 30/10/2026) |
-| Framework | CodeIgniter **3.1.13** + Smarty template + AdminLTE 2.4 (skin ต่อ account) + PhpSpreadsheet 5.10 (ผ่าน composer) |
-| Database | MySQL 8.0 (local: WSL Ubuntu) — schema `production`, charset **utf8mb4** |
-| ต้นทาง DB dump | `code/database/production.sql` (Navicat dump จาก production.ewitewit.com, MySQL 5.7, 23/09/2026) |
-| Dev server | `php -S 0.0.0.0:8091 -t code/public_html` |
-| Adminer | `php -S 127.0.0.1:8090 index.php` ที่ `~/.local/share/adminer/` |
+| **Repository** | `ake117/AP-Quotation-Generator` (Branch: `main`) |
+| **Local Path** | `C:\_quotation_script\AP_QT_Generator` |
+| **Current Version** | `v1.26 - Production Ready (ใช้งานจริงได้แล้ว)` |
+| **Core Framework** | CodeIgniter 3.1.13 + Smarty Template Engine + AdminLTE 2.4 |
+| **Spreadsheet Engine**| PhpSpreadsheet 5.10 (ทำงานผ่าน Compatibility Bridge `libraries/Excel.php`) |
+| **Database** | MySQL 8.0 (Charset: `utf8mb4`, Schema: `production`) |
+| **PDF Conversion** | LibreOffice Headless (`soffice --convert-to pdf`) |
 
-## การเข้าใช้งาน (local)
+---
 
+## 🚀 การติดตั้งและการเริ่มต้นใช้งาน (Getting Started)
+
+### 1. ข้อมูลการเข้าสู่ระบบ (Local)
+
+- **URL:** [http://127.0.0.1:8091/admin/login](http://127.0.0.1:8091/admin/login)
+- **Email:** `ake@ewitewit.com` (ROOT)
+- **Password:** `APqt2026!local`
+- *เมื่อ Login สำเร็จ ระบบจะ Redirect เข้าสู่หน้าหลัก **Quotation AP** ทันที*
+
+### 2. การตั้งค่า Environment (`.env`)
+
+คัดลอกไฟล์ตัวอย่าง `code/.env.example` เป็น `code/.env`:
+
+```bash
+cp code/.env.example code/.env
 ```
-URL      : http://127.0.0.1:8091/admin/login
-Email    : ake@ewitewit.com   (ROOT)
-Password : APqt2026!local
-```
 
-## การรันบน Windows (Docker)
+กำหนดค่าคอนฟิกที่จำเป็น เช่น ชื่อผู้ติดต่อตาม Business Group (BG):
+```env
+# Contact Name สำหรับใส่ใน Cell E10 แยกตาม Business Group (BG)
+BG_CONTACT_CD="คุณพาณินท์ บุญธรรม"
+BG_CONTACT_SDH="คุณพาณินท์ บุญธรรม"
+BG_CONTACT_TH="คุณณัฐวรรธน์ โต๊ะดอนทอง"
+
+# หรือกำหนดเป็น JSON Dictionary (ทางเลือก)
+# BG_CONTACTS='{"CD":"คุณพาณินท์ บุญธรรม","SDH":"คุณพาณินท์ บุญธรรม","TH":"คุณณัฐวรรธน์ โต๊ะดอนทอง"}'
+```
+> [!NOTE] 
+> หากมี BG ใหม่เข้ามา สามารถเพิ่ม `BG_CONTACT_<BG>="คุณ..."` ใน `.env` ได้ทันทีโดยไม่ต้องแก้ไขโค้ดและไม่ต้องแก้ฐานข้อมูล
+
+### 3. การรันระบบผ่าน Docker บน Windows
 
 ```bash
 docker run -d --name qt_app --add-host=host.docker.internal:host-gateway \
   -p 8091:8091 -e DB_HOST=host.docker.internal \
   -v C:/_quotation_script/AP_QT_Generator/code:/app -w /app \
   qt_app_img php -S 0.0.0.0:8091 -t public_html
-# หยุด/เริ่ม: docker stop qt_app / docker start qt_app
+
+# ควบคุมการทำงาน:
+docker stop qt_app
+docker start qt_app
 ```
 
-- `DB_HOST=host.docker.internal` ชี้ไป MySQL ใน WSL; **ไม่ set บน Linux ก็รันได้ปกติ** (fallback `localhost`)
-- extension ที่จำเป็น: `mysqli`, `zip` (ต้องมี `libzip-dev`), `gd` — ถ้า zip หาย export จะ 500 `Class "ZipArchive" not found`
-- หลังแก้ vendor/composer ให้เช็ค `vendor/composer/platform_check.php` ต้องการ PHP เวอร์ชันไหนเสมอ
+- **Extension ที่จำเป็น:** `mysqli`, `zip` (ต้องมี `libzip-dev`), `gd`
+- **ฐานข้อมูล:** ชี้ไปที่ MySQL ใน WSL ด้วย `DB_HOST=host.docker.internal` (Database account สำหรับแอป: `productionmy` ตาม `config/database.php`)
 
-- หลัง login จะเข้าหน้า **Quotation AP** ทันที (แก้ที่ `Logon.php` — `redirect('admin/quotationAP')`)
-- Theme: AdminLTE skin เก็บต่อ account ใน `cms_accounts.extra_data.skin` (ปัจจุบัน `blue-light`)
-- รหัสผ่านเก็บแบบ **MD5** (`md5(password + salt)`, salt ว่าง) — แก้ได้ผ่าน `UPDATE cms_accounts SET password=MD5('...')`
+---
 
-## โครงสร้างโฟลเดอร์
+## ⚙️ คุณสมบัติและการทำงานหลัก (Core Features & Business Rules)
 
-```
-AP_QT_Generator/
-├── backups/                    # DB backups (full + clean)
-├── example_data_source/        # ตัวอย่าง input จริง (media plan, company reference, synonym, หัวบริษัท)
-├── exported_from original system_20260925/   # ใบเสนอราคา 13 ใบจากระบบเดิม = golden reference
-├── code/
-│   ├── tests/                  # PHPUnit spec + gate runner (run)
-│   ├── tools/                  # phpunit.phar + install script
-│   ├── application/            # CI app
-│   │   ├── config/database.php # DB credentials (user: productionmy)
-│   │   ├── config/auth.php     # ระบบ auth: attempts, autoban, white-list
-│   │   ├── models/Auth_model.php
-│   │   ├── libraries/Auth.php  # login/logout/hash (md5)
-│   │   └── modules/admin/
-│   │       ├── controllers/    # Dashboard, Quotation, QuotationAP, Members, Teams, Projects, Logon ...
-│   │       ├── models/         # QuotationAP_model, Quotation_model, Estimated_model, ...
-│   │       └── views/          # Smarty .tpl (_layout/header.tpl = เมนู sidebar)
-│   ├── public_html/            # docroot (index.php, lib/, assets/)
-│   ├── system/                 # CI core (ห้ามแก้)
-│   └── database/production.sql # original dump (2.2MB, schema+data)
-```
+### 1. ระบบจัดการชื่อผู้ติดต่อ (Contact Name ใน Cell E10)
+- โปรแกรมเติมชื่อผู้ติดต่อในช่อง E10 อัตโนมัติจาก `.env` โดยดูจากคอลัมน์ `BG` ของโครงการ
+- หากในเอกสารไม่มีการระบุชื่อและไม่พบ BG ในระบบ โปรแกรมจะปฏิเสธการประมวลผลทันที เพื่อป้องกันการออกเอกสารผิดพลาด
 
-## โมดูลที่ใช้งานจริง
+### 2. การแบ่ง 1 แถวเป็นหลายใบเสนอราคา (Split Documents)
+- จำนวนใบเสนอราคาถูกกำหนดอัตโนมัติจาก **ProjectID ในคอลัมน์ Note (E)** ของ Media Plan (เช่น `40144/70122` แตกเป็น 2 ใบ)
+- รองรับ ProjectID ที่มีตัวอักษรนำหน้า เช่น `AP0001`, `AC0003`
+- ระบบจะ Lookup ชื่อโครงการจาก `libraries/ProjectDirectory.php` เพื่อนำมาใส่ในชื่อไฟล์และเนื้อหาใบเสนอราคา
 
-เมนูที่เหลือ: **Dashboard · Quotation AP · Members · Teams · Projects · Users · Configurations**
+### 3. สูตรคำนวณเงินและเศษทศนิยม (Pure Media + Fee + VAT)
+- **PURE MEDIA เก็บละเอียด 6 ตำแหน่ง:** คำนวณย้อนกลับจาก `BUDGET ALL` ด้วยสูตร `BUDGET ALL / 1.19305` เพื่อให้เมื่อคำนวณ Agency Fee 11.5% และ VAT 7% แล้ว ยอดรวมจะกลับมาเป็นตัวเลขกลมตามงบที่ได้รับอนุมัติพอดี (ไม่คลาดเคลื่อน 1 สตางค์)
+- **การแบ่งงบเท่ากัน:** ยอด `budget_all / N` คำนวณที่ 6 ตำแหน่ง และจัด Format การแสดงผลเป็น 2 ตำแหน่งในใบเสนอราคา
 
-- **Quotation AP** (`QuotationAP.php` + `QuotationAP_model.php`) — โมดูลหลัก: parse/นำเข้าข้อมูลใบเสนอราคา AP (Boost Post), จัดการเลข running ต่อเดือน/ปี, export
-  - ใช้ AJAX กลับไปที่ endpoints ของ controller `Quotation.php` เก่า: `load`, `load_estimated`, `load_ajax_estimated` (ดึงข้อมูล production มาเติมฟอร์ม) → **ห้ามลบ controller นี้**
-- **Members / Teams / Projects** — ข้อมูลประกอบ
-- **User accounts / Configurations** — ระบบ auth + config ของ framework
+### 4. กฎการตั้งชื่อไฟล์และคำนำหน้า (Quotation_ Prefix)
+- **ไฟล์ใบเสนอราคา:** ตั้งชื่อตามรูปแบบ `Quotation_<QuotationNo>_<BriefName>-<ProjectName>.xlsx` (ความยาวชื่อไม่เกิน 74 ตัวอักษร)
+- **ไฟล์ ZIP สำหรับดาวน์โหลด:** มีคำนำหน้า `Quotation_` นำหน้าเวลาเสมอ:
+  - `Quotation_<timestamp>.zip` : รวบรวมไฟล์ Excel ทั้งหมด + `Mediaplan.xlsx` ที่ใส่เลข QT แล้ว
+  - `Quotation_<timestamp}_pdf.zip` : รวบรวมไฟล์ PDF ทุกใบ
 
-## โครงสร้างตาราง (22 ตาราง)
+### 5. การแทรกรูปภาพ ตราประทับ และลายเซ็น
+- โปรแกรมจะแทรกรูปภาพ 4 จุด (โลโก้บริษัท, ตรายาง, ลายเซ็น 2 จุด) ลงในเทมเพลตอัตโนมัติจากโฟลเดอร์ `code/public_html/upload/quotation/ap/img/` ทุกครั้งที่มีการ Export
 
-**Quotation AP (5):**
-- `quotation_ap_data` — ผล parse: project, company_title/address/taxid, quotation_no, job_no, ad_format, budget/vat/budget_all
-- `quotation_ap_doc` — log เอกสารที่ ingest (doc_type: data/reference/synonym)
-- `quotation_ap_reference` (475) — ฐานบริษัท/โครงการอ้างอิง
-- `quotation_ap_reference_synonym` (2,084) — ชื่อเรียกพ้องสำหรับ fuzzy match
-- `quotation_ap_running` — ตัวนับเลขเอกสารต่อ year/month (unique key)
+---
 
-**Quotation/Production (6):**
-- `quotations`, `quotations_detail` (ใบเสนอราคา + รายการ), `production`, `production_task`, `production_cost`, `projects`
-
-**Master (4):** `customers`, `members`, `teams`, `job_title`
-
-**CMS auth (7):** `cms_accounts` (MD5 password), `modules`, `modules_actions`, `permissions`, `log_access`, `ip_attempts`, `ip_banned`
-
-## DB accounts (local)
-
-| User | Password | ไว้ใช้ |
-|---|---|---|
-| `apqt` | `apqt_local_2026` | admin/CLI |
-| `productionmy` | `eedMhuW34X4HsMYU6k7L` | ตัวแอป (ตาม `config/database.php` ไม่ต้องแก้) |
-
-Import: dump สะอาดแล้ว (utf8mb4, ไม่มี zero-date) — import ตรงได้เลย; ถ้า import dump เก่าก่อน v1.17 ให้ใช้ `sql_mode='NO_AUTO_VALUE_ON_ZERO,ALLOW_INVALID_DATES'`
-
-## Features ที่พัฒนาแล้ว (อัปเดต 30/10/2026)
-
-- **Excel engine ใหม่** — PHPExcel → PhpSpreadsheet 5.10 ผ่าน compatibility bridge (`libraries/Excel.php`) โค้ด controller เดิมรันได้ไม่ต้องแก้; ติดตั้งด้วย `composer require phpoffice/phpspreadsheet`
-- **รับเฉพาะ .xlsx** — upload validation ปฏิเสธไฟล์อื่น, writer ใช้ Xlsx เท่านั้น
-- **Contact name (cell E10) จาก `.env`** — จัดเก็บและกำหนดชื่อผู้ติดต่อตาม **BG** ในไฟล์ `code/.env` (ไม่ต้องพึ่ง Database และปรับแต่งได้ง่ายโดยไม่ต้องแก้โค้ด):
-  ```env
-  BG_CONTACT_CD="คุณพาณินท์ บุญธรรม"
-  BG_CONTACT_SDH="คุณพาณินท์ บุญธรรม"
-  BG_CONTACT_TH="คุณณัฐวรรธน์ โต๊ะดอนทอง"
-  ```
-  *(สามารถเพิ่ม BG ใหม่ใน `.env` เช่น `BG_CONTACT_BKM="คุณ..."` ได้ทันที หากไม่มีชื่อใน `.env` หรือไม่ระบุ BG ระบบจะแจ้ง Error ทันทีเพื่อป้องกันเอกสารออกโดยไม่มีชื่อผู้ติดต่อ)*
-- **Export เป็น 2 zip** — ① `Quotation_*.zip` = quotation xlsx ทุกใบ + `Mediaplan.xlsx` (แผนที่เติมเลข QT/โครงการ/ยอดแบ่งแล้ว พร้อม paste กลับ PO Status) ② `Quotation_*_pdf.zip` = PDF ทุกใบ
-- **PDF อัตโนมัติ** — ทุก quotation xlsx ถูก convert เป็น PDF ด้วย LibreOffice headless (`soffice --convert-to pdf`) ระหว่าง export
-- **ชื่อไฟล์ ≤ 74 ตัวอักษร** (ไม่รวมนามสกุล) — `sanitize_text()` ใช้ mb_substr นับ Thai chars ถูกต้อง
-- **Quotation render แยกเป็นคลาส** — `libraries/QuotationExporter.php` ทำ template → xlsx → PDF โดยไม่ต้องพึ่ง CodeIgniter/DB/HTTP; controller เหลือแค่เรียกใช้ (โค้ดชุดเดียวกับที่เทสต์ตรวจ)
-- **1 แถว → หลายใบ (split)** — ProjectID ใน column E (Note) กำหนดจำนวนใบ แต่ละ ID ถูก lookup ชื่อโครงการจาก `ProjectDirectory` แบ่งเงินเท่ากัน (เก็บ 6 ตำแหน่ง แสดง 2) หรือระบุ `split_amounts` เมื่อแบ่งไม่เท่า — กรณีที่ใช้บ่อยที่สุด
-- **หลาย row → 1 ใบ (merge)** — ส่ง `items` array เข้ามา แต่ละ item ใช้ 2 แถวจากแถว 23 ลงไป (แถวชื่อ: `D` เลขที่, `E` โครงการ · แถวรายละเอียด: `E` รายการ, `J` จำนวน, `K` ราคา/หน่วย, `L` สูตรจำนวนเงิน); เมื่อมี `items` ต้องไม่เขียน `K24` เพราะจะทับราคาของรายการแรก — **ถ้ามี `items` จะไม่ split** เพราะจะทำให้ยอดรวมของใบเพี้ยน
-- **K24 = PURE MEDIA + Agency Fee + VAT ที่ลงตัวเป็นเลขกลม** — K24 ใช้ค่า PURE MEDIA จาก media plan (คอลัมน์ N) หรือคำนวณจาก `BUDGET ALL` เป็นทศนิยม 6 ตำแหน่ง (ไม่ปัดเป็นสตางค์ก่อน เพราะจะทำให้ยอดรวมเกิน/ขาด 1 สตางค์) แล้ว fee 11.5% + VAT 7% จึงกลับมาเป็นยอดที่ลูกค้าอนุมัติพอดี (ทดสอบ 5,000 / 10,000 / 12,345 / 25,000 / 100,000) — งานที่ไม่มี fee ส่ง `agency_fee => false`
-- **E24** — `Boost post <period>` เมื่อมี period และเหลือแค่ `Boost post` เมื่อไม่มี (ไม่ต่อท้ายด้วย ad format)
-
-### ภาพในใบ quotation
-แอปแทรกภาพ 4 จุด (โลโก้ / ตรา / ลายเซ็น 2 จุด) จากไฟล์ใน
-`code/public_html/upload/quotation/ap/img/` ทุกครั้งที่ export และล้างภาพเดิมที่ฝังใน template ออก
-— ถ้าจะเปลี่ยนภาพ ให้เปลี่ยนไฟล์ใน `img/` ไม่ใช่ใน `template.xlsx` (ภาพใน template จะถูกทับ)
-
-## สิ่งที่ถูกถอดออก (cleanup เมื่อ 25/09/2026)
-
-- **DB**: ตาราง legacy (`newsletter_email`, `videos`, `frontend_language`, `migrations`) + โมดูลในตาราง `modules` 11 รายการ (Posts, Floor, Room type, Banners, Gallery, Project rooms, Menu Manager, Report, Agents, Estimated, Production Cost) พร้อม actions/permissions
-- **ไฟล์**: controllers/views ของ Estimated + Production Cost ย้ายไป `modules/admin/_removed_quotation_module/` (รอลบถาวร)
-- **Frontend CMS เก่า** (Booking, Agents, Magazine, Signup ฯลฯ) ยังอยู่ใน `application/controllers/` — ไม่ได้ใช้ แต่ยังไม่ได้ลบ
-
-## ไฟล์ต้นทาง 2 ไฟล์
-
-| ไฟล์ | ใช้ทำอะไร | ชีต |
-|---|---|---|
-| `Ewit_AP Online Media Plan 2024-2026` | media plan ที่ใช้งานจริงของเดือน | 1 เดือน = 1 tab |
-| `AP Quotation - PO Status 2026` | ออกใบ Quotation + ติดตามสถานะบน AP Webvendor | **tab แรก = ข้อมูล media plan** (ชื่อ tab เปลี่ยนทุกเดือน เช่น `0926` → `1026`) + tab **ProjectID** (ใช้ทำ `ProjectDirectory`) |
-
-- ชื่อ tab ที่ import ต้องตรงกับ `date_format($quotation_date, "my")` เช่น กันยายน 2026 = `0926`
-- **หัวตารางอยู่ row 4** ในไฟล์ PO Status (เหนือขึ้นไปเป็นแถวสรุปยอด) — `excel_search_col()` จึงสแกน
-  8 แถวแรกแล้วเลือกแถวที่ตรงชื่อคอลัมน์มากที่สุด (`QuotationBatch::headerRow`) ไม่ต้องแก้โค้ดเวลาทีมย้ายหัวตาราง
-- แถวข้อมูลเริ่มที่ `header_row + 1`
-
-## การแบ่งหนึ่งแถวเป็นหลายใบ (split)
-
-`QuotationBatch::export()` รับหนึ่ง row แล้วคืนรายการเอกสาร — **จำนวนใบมาจาก column E (Note)**
-ซึ่งเก็บ ProjectID ไว้ (คั่นด้วย comma, slash หรือขึ้นบรรทัดใหม่). **ProjectID อาจมีตัวอักษรได้**
-เช่น `AP0001`, `AC0003` (รูปแบบ: ตัวอักษรไม่เกิน 3 ตัว + ตัวเลขอย่างน้อย 2 หลัก) และเทียบแบบ
-ไม่สนตัวพิมพ์เล็ก/ใหญ่:
+## 📂 โครงสร้างการจัดเก็บไฟล์ (Temp & Archive Storage)
 
 ```
-E = "40194/40112/70105"  + Budget All 10,000
-  → 3 ใบ: Grande Pleno Pinklao - Charun 2 | Grande Pleno Pinklao - Kanchana
-           | Pleno Town Ladkrabang - Chalongkrung
+upload/quotation/ap/
+├── temp/{timestamp}/                   # โฟลเดอร์ทำงานชั่วคราวระหว่างสร้างเอกสาร (ล้างอัตโนมัติเมื่อเสร็จ)
+└── archive/                            # จัดเก็บไฟล์ ZIP ผลลัพธ์
+    ├── Quotation_{timestamp}.zip       # รวบรวมไฟล์ Excel + Mediaplan.xlsx
+    │   ├── Quotation_2026-1591_...xlsx
+    │   ├── Quotation_2026-1592_...xlsx
+    │   └── Mediaplan.xlsx              # Media Plan ที่เติมเลข QT พร้อม Paste กลับ PO Status
+    └── Quotation_{timestamp}_pdf.zip   # รวบรวมเฉพาะไฟล์ PDF ของทุกใบ
 ```
 
-| ลำดับการตัดสินจำนวนใบ | ผล |
-|---|---|
-| มี `items` | 1 ใบ (merge ชนะ split) |
-| `split_amounts` | จำนวนตามที่ระบุยอดมา (แบ่งไม่เท่ากัน) |
-| ProjectID ใน `note` | 1 ID = 1 ใบ |
-| `split_into` | N ใบ |
-| ไม่มีอะไรเลย | 1 ใบ |
+- **URL สำหรับดาวน์โหลดผ่าน Web Interface:**
+  - Excel ZIP: `/upload/quotation/ap/archive/Quotation_{timestamp}.zip`
+  - PDF ZIP: `/upload/quotation/ap/archive/Quotation_{timestamp}_pdf.zip`
 
-**เงิน**
-- แบ่งเท่าเป็น default: `budget_all / N` เก็บ **6 ตำแหน่ง** แต่ cell แสดง 2 ตำแหน่ง
-  (10,000 ÷ 3 → 3,333.333333 ต่อใบ ลูกค้าเห็น 3,333.33 และสามใบรวมได้ 10,000.00 พอดี)
-- **ทุกใบที่ split ใช้ทศนิยม 6 ตำแหน่งเหมือนกันหมด** แม้ยอดจะลงตัวเป็นสตางค์ (15,000 ÷ 3 =
-  5,000.000000) — ไม่มี logic แยกกรณี
-- **PURE MEDIA เก็บ 6 ตำแหน่งเสมอ** — `10,000 / 1.19305 = 8,381.878379` พิมพ์เป็น
-  8,381.88 ถ้าปัดเป็น 2 ตำแหน่งแล้วคิด fee ต่อ จะได้ยอดรวม **10,000.01** (เกินไป 1 สตางค์)
-- fee ปัดตามความละเอียดของฐาน: ฐานที่ลงตัวเป็นสตางค์ (pure media จาก plan หรือ subtotal
-  ของใบที่รวมหลายรายการ) ใช้ 2 ตำแหน่งเพื่อให้ยอดรวมกลับมาเป็นเลขกลม; ฐานที่เราคำนวณเอง
-  หรือแบ่งมาใช้ 6 ตำแหน่ง
-- แบ่งไม่เท่าได้: ส่ง `split_amounts => [6000, 4000]`
+---
 
-**ชื่อโครงการ** — ProjectID ถูก lookup ผ่าน `libraries/ProjectDirectory.php` (141 คู่
-จากชีต ProjectID/ProjectName ของทีมการตลาด) ถ้าไม่พบ ID จะใช้ชื่อโครงการเดิมของ row
-(ตั้งใจให้เห็นว่าผิด ไม่ใช่เดาชื่อใหม่)
+## ☁️ การเชื่อมต่อกับ Google Sheets API (Direct Sync)
 
-**ชื่อเอกสาร (ชื่อไฟล์)** — ใช้ **BriefName (D) + Project (C) ของใบนั้น**: ถ้า D มีชื่อโครงการ
-ของ row อยู่แล้ว จะถูกแทนที่ด้วยชื่อโครงการของใบนั้น ถ้า D ยังไม่มีชื่อโครงการ จะต่อท้ายให้
-(ตัวอย่างจริง: No. 49 ของแผน ก.ย. 26 = QT 1591/1592 ซึ่งเป็นบรรทัดเดียวกันแต่คนละโครงการ)
+ระบบรองรับการดึงข้อมูลจาก Google Sheets ของทีม Media Plan ได้โดยตรงโดยไม่ต้องอัปโหลดไฟล์:
+- **Endpoint:** `POST /admin/quotationAP/import_from_google` (ระบุ `quotation_date=YYYY-MM-DD`)
+- **การทำงาน:** อ่านข้อมูล Tab ประจำเดือน (`0926`, `1026`, ...) → Split ข้อมูลและออกเลข QT → **เขียนเลข QT กลับเข้าสู่ Google Sheet ทันที** → สร้างเอกสารใบเสนอราคา
 
-```
-D = ทาวน์โฮม และ บ้านแฝด โซน เพชรเกษม-บางแค_Pleno Petchkasem 91
-note = 40144/70122   →  2 ใบ
-  Quotation_2026-1591_ทาวน์โฮม-และ-บ้านแฝด-โซน-เพชรเกษม-บางแค_Pleno-Petchkasem-91
-  Quotation_2026-1592_ทาวน์โฮม-และ-บ้านแฝด-โซน-เพชรเกษม-บางแค_Pleno-Town-Petchkasem-81
-```
+### การตั้งค่า Google Sheets API:
+1. สร้าง Service Account ใน Google Cloud Platform และดาวน์โหลด JSON Credentials
+2. นำไฟล์ไปวางที่ `code/application/config/google-service-account.json` (หรือระบุ path ใน ENV `APQT_GOOGLE_SA`)
+3. กด Share สเปรดชีตให้กับ Email ของ Service Account โดยกำหนดสิทธิ์เป็น **Editor**
 
-**ตอน import แถวเดียวจะถูกแตกเป็นหลายแถว** — 1 ใบ = 1 แถว + เลขของตัวเอง (แบบเดียวกับที่ทีมทำมือ:
-แถว 49 สองบรรทัด 2026/1591 กับ 2026/1592) โดย `QuotationBatch::splitRows()` สร้างแถวใหม่
-ครบทุกช่อง (โครงการจาก lookup, ชื่อไฟล์แบบ D+C, ยอดแบ่ง 6 ตำแหน่ง, `note` เหลือ ID เดียว
-เพื่อไม่ให้ export แตกซ้ำ) — ทำให้ export เป็นการ render 1:1
+---
 
-**เลขใบ** — ระบบ **ออกรันต่อจากตัวนับ `quotation_ap_running` เอง**: ตัวนับเก็บ "เลขสุดท้ายที่ใช้"
-ดังนั้นถ้า counter = 1590 ใบถัดไปคือ **1591** (เพิ่มก่อนใช้) ใบที่ split ออก N ใบจะได้เลขต่อกัน
-N เลข และบันทึกตัวนับครั้งเดียวหลัง export จบ (ถ้าพังกลางทาง เลขที่ยังไม่ออกจะไม่ถูกเผา)
+## 🧪 การทดสอบระบบ (Automated Tests & Quality Gate)
 
-การหาเลขเริ่มต้นใช้ค่าสูงสุดจาก 3 ทาง:
-1. counter ของ **เดือนเดียวกับใบเสนอราคา** (`get_quotationAP_running_exact`)
-2. ถ้าเดือนนั้นยังไม่มี ใช้ counter ของเดือนก่อนหน้า (พฤติกรรมเดิมของการ import)
-3. **floor จากเลขที่มีอยู่แล้วใน `quotation_ap_data`** — กันออกเลขซ้ำเมื่อ counter ตกหลัง
-
-`split_quotation_nos` ยังส่งเข้ามาเองได้ถ้าต้องการกำหนดเลขตายตัว และ `split_periods` ใช้แยก
-ช่วงเวลาต่อใบ
-
-**การเก็บเลขที่ออกแล้ว** — ตอน import แถวของ media plan ถูกแตกเป็น 1 ใบ = 1 แถว
-(`QuotationBatch::splitRows`) พร้อม `quotation_no` ของแต่ละใบที่ออกจาก running counter
-แล้วบันทึกครั้งเดียวหลังจบการ import — export จึง render 1:1 ตามแถวในฐานข้อมูล
-และเลขที่ออกไปแล้วถูกเก็บใน `quotation_ap_data.quotation_no` ตั้งแต่ตอน import
-
-**การนำเข้า** — คอลัมน์ `Note` (E) ถูก map เป็น `note` ใน `get_data()` แล้ว (เพิ่มใน
-`$coldata['field']`) จำนวนใบจึงมาจากข้อมูลจริงได้โดยไม่ต้องกรอกมือ
-
-> **หมายเหตุ:** ไม่มีช่องกรอกจำนวนใบใน UI โดยตั้งใจ — จำนวนใบอ่านจาก Note ที่มากับ row
-> และตอน import จะแตกแถวพร้อมออกรันต่อเนื่องจาก `quotation_ap_running` แล้ว
-
-## ดึงข้อมูลจาก Google Sheet โดยตรง (ไม่ต้อง download/upload)
-
-`POST /admin/quotationAP/import_from_google`  (form: `quotation_date=2026-09-25`)
-
-อ่าน tab ของเดือนนั้น (`0926`, `1026`, …) ผ่าน Sheets API → split ตาม ProjectID ใน Note →
-insert ลง `quotation_ap_data` พร้อมเลขรัน → **เขียนเลขกลับลงชีตให้เลย** (แทรกแถวให้ครบทุกใบ)
-แล้วค่อยเรียก export เพื่อสร้างไฟล์ xlsx/PDF ตามปกติ
-
-**ตั้งค่าครั้งเดียว**
-
-1. Google Cloud → เปิด **Google Sheets API** → สร้าง **Service Account** → ดาวน์โหลด JSON key
-2. วางไฟล์เป็น `code/application/config/google-service-account.json`
-   (หรือตั้ง env `APQT_GOOGLE_SA=/path/to/key.json`) — ไฟล์นี้อยู่ใน `.gitignore`
-3. แชร์สเปรดชีตให้ e-mail ของ service account (`...@....iam.gserviceaccount.com`)
-   สิทธิ์ **Editor** (ถ้าให้ Viewer จะ import ได้แต่เขียนเลขกลับไม่ได้)
-4. `config/google.php` ตั้ง spreadsheet id ไว้แล้ว; ปิดการเขียนกลับได้ด้วย
-   `$config['google_write_back'] = false;`
-
-**โครงสร้างโค้ด**
-
-| ไฟล์ | หน้าที่ |
-|---|---|
-| `libraries/GoogleSheetsClient.php` | service-account JWT (openssl) → access token, `getValues`, `updateValues`, `insertRows` — ใช้ curl ล้วน ไม่เพิ่ม dependency |
-| `libraries/SheetTable.php` | แปลง values matrix → rows ตามหัวตาราง (หา header row เอง), เก็บ `_row` ไว้เขียนกลับ, สร้าง A1 range |
-| `QuotationAP::import_from_google()` | ต่อทุกอย่างเข้าด้วยกัน + เขียนเลขกลับจากล่างขึ้นบน |
-
-## ที่จัดเก็บไฟล์และผลลัพธ์หลัง Import / Export (Temp & Archive)
-
-### 1. โฟลเดอร์ชั่วคราว (Temp) ระหว่างการสร้าง Quotation
-ในขั้นตอนการ Import และ Export ระบบจะสร้างโฟลเดอร์ชั่วคราวตามเวลาประมวลผล (Format: `YYYYMMDDHis` เช่น `20261030035950`):
-- **Relative Path:** `code/public_html/upload/quotation/ap/temp/{timestamp}/`
-- **Absolute Path (Windows):** `C:\_quotation_script\AP_QT_Generator\code\public_html\upload\quotation\ap\temp\<timestamp>\`
-- **สิ่งที่อยู่ในโฟลเดอร์นี้:** ไฟล์ media plan, reference, synonym ที่อัปโหลดเข้ามา และไฟล์ใบเสนอราคาแต่ละใบ (`.xlsx` และ `.pdf`) ที่สร้างออกมาก่อนถูกนำไป zip
-- **พฤติกรรมการล้าง Temp:** ในฟังก์ชัน `zip_quotationAP()` หลังสร้างไฟล์ ZIP สำเร็จ ระบบจะเรียก `unlink` ลบไฟล์ข้างในและ `rmdir` โฟลเดอร์ temp นั้นออกทันที แต่หากกระบวนการติดขัดหรือเกิด error โฟลเดอร์และไฟล์ใน temp ของรอบนั้นจะยังหลงเหลืออยู่
-
-### 2. โฟลเดอร์จัดเก็บไฟล์ ZIP (Archive)
-เมื่อสร้าง ZIP เรียบร้อย ไฟล์จะถูกเก็บไว้ที่:
-- **Relative Path:** `code/public_html/upload/quotation/ap/archive/`
-- **Absolute Path (Windows):** `C:\_quotation_script\AP_QT_Generator\code\public_html\upload\quotation\ap\archive\`
-- **URL ดาวน์โหลดผ่านเว็บ:** `/upload/quotation/ap/archive/Quotation_{timestamp}.zip` (และ `Quotation_{timestamp}_pdf.zip`)
-
-```
-upload/quotation/ap/archive/Quotation_{folder}.zip
-    ├─ Quotation_2026-1591_<brief>.xlsx      ← ใบ quotation
-    ├─ Quotation_2026-1592_<brief>.xlsx
-    └─ Mediaplan.xlsx              ← plan ที่เติมเลข QT แล้ว (1 แถว = 1 ใบ)
-upload/quotation/ap/archive/Quotation_{folder}_pdf.zip
-    └─ ทุกใบเป็น PDF
-```
-
-`Mediaplan.xlsx` คือไฟล์ที่ paste กลับเข้า PO Status ได้เลย:
-- แถวที่ split จะถูก **แทรกแถวใหม่** ให้ครบตามจำนวนใบ (`MediaPlanWriter::writeRow`)
-- เติม `QT No.` ต่อใบ, `Project` จาก lookup, `BriefName` แบบ D+C, `Note` เหลือ ID เดียว
-- คอลัมน์ที่เป็นของทั้ง entry (วันที่, objective, ad format, period, …) ถูกคัดลอกลงมาทุกแถว
-- แถวที่อยู่ถัดลงไปไม่ถูกทับ (เขียนจากล่างขึ้นบน)
-
-## Tests (gate)
-
-ใบเสนอราคาต้องจบที่ PDF ที่ถูกต้อง เทสต์จึงรัน render จริงแล้วตรวจไฟล์ที่ได้:
+ระบบมีชุดทดสอบครอบคลุมทั้ง Business Logic และการ Render เอกสารจริง:
 
 ```bash
-code/tests/run            # จาก root ของ repo (~30 วินาที; 52 tests, 269 assertions)
-code/tests/run --testdox  # รับ flag ของ PHPUnit ตามปกติ
+# รันชุดทดสอบทั้งหมด
+code/tests/run
+
+# รันพร้อมแสดงรายละเอียดข้อทดสอบ
+code/tests/run --testdox
 ```
 
-- ครอบ: ข้อมูลลูกค้า, เลขที่ใบ/Job No, PURE MEDIA, Agency Fee, VAT, ยอดรวมเลขกลม, ข้อความใน PDF, จำนวนเงินเป็นตัวอักษร, ชื่อไฟล์, รายการ E24, หลายรายการในใบเดียว (merge), แตกแถวตาม ProjectID (comma/slash/ขึ้นบรรทัดใหม่, มีตัวอักษรได้), lookup ชื่อโครงการ, แบ่งเงินเท่า/ไม่เท่า, เศษ 6 ตำแหน่งที่ยังรวมได้เต็ม
-- Golden reference: 13 ใบใน `exported_from original system_20260925/` — ถ้าเทสต์ขัดกับ reference ถือว่า reference ถูก
-- รันใน sandbox ได้ (ไม่พึ่ง `$HOME` หรือเน็ต) เพราะ `phpunit.phar` ถูก commit ไว้ใน `code/tools/`
+- **ความครอบคลุม:** 52 tests, 269 assertions (ครอบคลุมการคำนวณเงิน, เลขรัน, การ Split/Merge, การจัด Format, การดึง Contact Name จาก `.env` และการแปลงเป็น PDF)
+- **Golden References:** ยึดความถูกต้องตามตัวอย่างเอกสาร 13 ใบใน `exported_from original system_20260925/`
 
-## Backups
+---
 
-```
-backups/production_full_backup_2026-09-25.sql      # dump ก่อน cleanup ครั้งแรก (1.7M)
-backups/production_clean_15tables_2026-09-25.sql.gz # หลัง cleanup รอบแรก (204K)
-```
+## 📋 ประวัติเวอร์ชันที่สำคัญ (Release History)
 
-## ปัญหาที่ทราบ / TODO
-
-- [x] ~~รหัสผ่าน MD5~~ → ใช้ `password_hash()` (bcrypt) แล้ว; legacy MD5 ถูก upgrade อัตโนมัติตอน login ครั้งแรก (เหลือ 2 บัญชีที่ยังเป็น MD5 จนกว่าจะ login)
-- [x] ~~PHPExcel ล้าสมัย~~ → แก้แล้วด้วย PhpSpreadsheet (25/09/2026)
-- [x] ~~ไม่มี FOREIGN KEY ใดๆ~~ → เพิ่ม FK ให้ความสัมพันธ์หลักแล้ว (27/10/2026 — ดู `code/database/migrations/20261027_integrity.sql`; คอลัมน์ audit `create_by_id`/`update_by_id` ยังไม่ผูก FK เพราะมี legacy user id ที่ถูกลบไปแล้วเป็นพันแถว)
-- [x] ~~`quotations.quotation_no` ไม่ normalize (N/A, format ปนกัน), `production_id` เป็น varchar~~ → แก้แล้ว 27/10/2026 (`migrations/20261027_quotation_no.sql` + guard ใน `Quotation.php`): N/A/ช่องว่าง → NULL, QT/Q- prefix ถูกตัด, `production_id` เป็น INT พร้อม FK
-- [x] ~~Charset `utf8` (3-byte)~~ → แปลงเป็น utf8mb4 ทั้ง schema แล้ว (v1.17 — 26 ตาราง + connection `database.php` + dump regenerate; ทดสอบ emoji round-trip ผ่าน)
-- [x] ~~`'0000-00-00 00:00:00'` ค้างในข้อมูลบางแถว~~ → แปลงเป็น NULL แล้ว (v1.18 — 67 แถว: production_start/end + quotation_date เป็น nullable, guard null-safe ใน Quotation.php)
-- [x] ~~MySQL 5.7 (prod) vs 8.x (local)~~ → ยกเลิก: โปรเจกต์รัน local เท่านั้น ไม่มีการ deploy ขึ้นเว็บจริง (30/10/2026)
-- [ ] ลบไฟล์ใน `_removed_quotation_module/` + frontend controllers เก่าเมื่อยืนยันแล้ว
-- [ ] `agency_fee` ยัง default = เปิด (ตาม media plan ใหม่) — ถ้ามีงานที่ไม่มี fee ต้องส่ง flag ปิดมาจาก importer
-- [ ] UI ระดับใหญ่: ย้าย theme ไป **Tabler** (https://tabler.io/admin-template/preview?theme=dark) — ต้องแก้ template ~40 ไฟล์ + Bootstrap 5 (jQuery conflicts: DataTables/datepicker/Select2) — ควรเริ่มจากหน้า quotationAP แล้วค่อยทยอยหน้าอื่น (เสนอครั้งแรก 30/10/2026, ผู้ใช้เลื่อนไว้ก่อน)
-- [ ] (ทางเลือกเบา ๆ แทน Tabler) แต่ง AdminLTE 2.4 ให้เป็น dark สไตล์ Tabler ผ่าน CSS override ใน `grande.css` — เร็ว ไม่พังฟังก์ชัน
-
-## Tags ล่าสุด (branch fix/php83-phpspreadsheet)
-
-| Tag | เรื่อง |
+| Version | รายละเอียดการเปลี่ยนแปลง |
 |---|---|
-| `v1.15-php-api-fix` | merge upstream v1.03–v1.14 + PhpSpreadsheet 5.x API (`getCell([col,row])`, probe loop ≤16384, pos 0-based) |
-| `v1.16-remove-contact-editor` | ตัดช่องแก้ Contact Name มือออกจากหน้า Quotation AP |
-| `v1.17-utf8mb4` | schema + connection + dump เป็น utf8mb4 หมด (emoji-safe) |
-| `v1.18-null-dates` | zero-date → NULL (67 แถว, nullable + null-safe guards) |
+| **v1.26** *(Latest)* | **Production Ready (ใช้งานจริงได้แล้ว):**<br>- รองรับ Contact Name (cell E10) ตาม BG จาก `code/.env`<br>- เติมคำนำหน้า `Quotation_` สำหรับไฟล์เอกสารและไฟล์ ZIP<br>- แยกดาวน์โหลด ZIP เป็น Excel และ PDF พร้อมอัปเดต UI แสดง Log<br>- แก้ปัญหา DB unknown column ด้วย Safe Auto-filter |
+| **v1.25** | เพิ่มบันทึกข้อเสนอแนะเกี่ยวกับ UI Theme (Tabler) ลงในเอกสาร |
+| **v1.20 - v1.24** | Modern Theme Overrides, แก้ไขปัญหา Admin 500, จัดระเบียบ Sidebar และ Header |
+| **v1.17 - v1.18** | ปรับปรุง Database เป็น `utf8mb4` เต็มรูปแบบ และแก้ไข Invalid Zero-Dates เป็น NULL |
+| **v1.16** | ยกเลิกกล่องกรอกชื่อผู้ติดต่อแบบ Manual ในหน้าเว็บเพื่อเปลี่ยนมาใช้ระบบอัตโนมัติ |
+| **v1.14** | รองรับการ Import และ Write-back ข้อมูลผ่าน Google Sheets API โดยตรง |
+| **v1.12 - v1.13** | ระบบ Split แถวตาม ProjectID อัตโนมัติ พร้อมส่งออก `Mediaplan.xlsx` กลับมาใน ZIP |
+| **v1.03 - v1.08** | ระบบคำนวณ Pure Media ทศนิยม 6 ตำแหน่ง, การรวมใบ (Multi-item), และ PHPUnit PDF Gate |
+
+---
+
+## 📝 รายการที่รอดำเนินการ (Future Plan / TODO)
+
+- [ ] เพิ่ม Option บนหน้าเว็บสำหรับเลือกว่าต้องการสร้างเฉพาะไฟล์ Excel หรือต้องการแปลงไฟล์ PDF ด้วย
+- [ ] พิจารณาปรับดีไซน์ UI ของหน้าเว็บให้มีความทันสมัยยิ่งขึ้น (เช่น ธีมสไตล์ Tabler หรือการปรับแต่ง CSS Override)
