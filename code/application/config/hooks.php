@@ -11,12 +11,16 @@ defined('BASEPATH') OR exit('No direct script access allowed');
 |	https://codeigniter.com/user_guide/general/hooks.html
 |
 */
+// Display compressor hook: disabled because regex-based HTML minification
+// corrupts inline JavaScript that contains HTML tags inside strings or comments.
+/*
 $hook['display_override'][] = array(
 	'class' => '',
 	'function' => 'compress',
 	'filename' => 'compress.php',
 	'filepath' => 'hooks'
 );
+*/
 
 $hook['post_controller_constructor'][] = array(
     'class'    => 'Auth',

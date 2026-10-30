@@ -104,8 +104,14 @@ Import: dump สะอาดแล้ว (utf8mb4, ไม่มี zero-date) �
 
 - **Excel engine ใหม่** — PHPExcel → PhpSpreadsheet 5.10 ผ่าน compatibility bridge (`libraries/Excel.php`) โค้ด controller เดิมรันได้ไม่ต้องแก้; ติดตั้งด้วย `composer require phpoffice/phpspreadsheet`
 - **รับเฉพาะ .xlsx** — upload validation ปฏิเสธไฟล์อื่น, writer ใช้ Xlsx เท่านั้น
-- **Contact name** — โปรแกรมเขียนชื่อผู้ติดต่อลง cell **E10** ของไฟล์ export เอง (เก็บใน `quotation_ap_data.contact_name`); ช่องแก้มือในหน้า Quotation AP ถูกตัดออกแล้ว (v1.16) เหลือ endpoint `GET/POST /admin/quotationAP/edit_contact` ไว้เผื่อเรียกจากที่อื่น
-- **Export เป็น 2 zip** — ① `*.zip` = quotation xlsx ทุกใบ + `Mediaplan.xlsx` (แผนที่เติมเลข QT/โครงการ/ยอดแบ่งแล้ว พร้อม paste กลับ PO Status) ② `*_pdf.zip` = PDF ทุกใบ
+- **Contact name (cell E10) จาก `.env`** — จัดเก็บและกำหนดชื่อผู้ติดต่อตาม **BG** ในไฟล์ `code/.env` (ไม่ต้องพึ่ง Database และปรับแต่งได้ง่ายโดยไม่ต้องแก้โค้ด):
+  ```env
+  BG_CONTACT_CD="คุณพาณินท์ บุญธรรม"
+  BG_CONTACT_SDH="คุณพาณินท์ บุญธรรม"
+  BG_CONTACT_TH="คุณณัฐวรรธน์ โต๊ะดอนทอง"
+  ```
+  *(สามารถเพิ่ม BG ใหม่ใน `.env` เช่น `BG_CONTACT_BKM="คุณ..."` ได้ทันที หากไม่มีชื่อใน `.env` หรือไม่ระบุ BG ระบบจะแจ้ง Error ทันทีเพื่อป้องกันเอกสารออกโดยไม่มีชื่อผู้ติดต่อ)*
+- **Export เป็น 2 zip** — ① `Quotation_*.zip` = quotation xlsx ทุกใบ + `Mediaplan.xlsx` (แผนที่เติมเลข QT/โครงการ/ยอดแบ่งแล้ว พร้อม paste กลับ PO Status) ② `Quotation_*_pdf.zip` = PDF ทุกใบ
 - **PDF อัตโนมัติ** — ทุก quotation xlsx ถูก convert เป็น PDF ด้วย LibreOffice headless (`soffice --convert-to pdf`) ระหว่าง export
 - **ชื่อไฟล์ ≤ 74 ตัวอักษร** (ไม่รวมนามสกุล) — `sanitize_text()` ใช้ mb_substr นับ Thai chars ถูกต้อง
 - **Quotation render แยกเป็นคลาส** — `libraries/QuotationExporter.php` ทำ template → xlsx → PDF โดยไม่ต้องพึ่ง CodeIgniter/DB/HTTP; controller เหลือแค่เรียกใช้ (โค้ดชุดเดียวกับที่เทสต์ตรวจ)
@@ -181,8 +187,8 @@ E = "40194/40112/70105"  + Budget All 10,000
 ```
 D = ทาวน์โฮม และ บ้านแฝด โซน เพชรเกษม-บางแค_Pleno Petchkasem 91
 note = 40144/70122   →  2 ใบ
-  2026-1591_ทาวน์โฮม-และ-บ้านแฝด-โซน-เพชรเกษม-บางแค_Pleno-Petchkasem-91
-  2026-1592_ทาวน์โฮม-และ-บ้านแฝด-โซน-เพชรเกษม-บางแค_Pleno-Town-Petchkasem-81
+  Quotation_2026-1591_ทาวน์โฮม-และ-บ้านแฝด-โซน-เพชรเกษม-บางแค_Pleno-Petchkasem-91
+  Quotation_2026-1592_ทาวน์โฮม-และ-บ้านแฝด-โซน-เพชรเกษม-บางแค_Pleno-Town-Petchkasem-81
 ```
 
 **ตอน import แถวเดียวจะถูกแตกเป็นหลายแถว** — 1 ใบ = 1 แถว + เลขของตัวเอง (แบบเดียวกับที่ทีมทำมือ:
@@ -239,14 +245,27 @@ insert ลง `quotation_ap_data` พร้อมเลขรัน → **เข
 | `libraries/SheetTable.php` | แปลง values matrix → rows ตามหัวตาราง (หา header row เอง), เก็บ `_row` ไว้เขียนกลับ, สร้าง A1 range |
 | `QuotationAP::import_from_google()` | ต่อทุกอย่างเข้าด้วยกัน + เขียนเลขกลับจากล่างขึ้นบน |
 
-## ไฟล์ที่ได้กลับมาหลัง import + export
+## ที่จัดเก็บไฟล์และผลลัพธ์หลัง Import / Export (Temp & Archive)
+
+### 1. โฟลเดอร์ชั่วคราว (Temp) ระหว่างการสร้าง Quotation
+ในขั้นตอนการ Import และ Export ระบบจะสร้างโฟลเดอร์ชั่วคราวตามเวลาประมวลผล (Format: `YYYYMMDDHis` เช่น `20261030035950`):
+- **Relative Path:** `code/public_html/upload/quotation/ap/temp/{timestamp}/`
+- **Absolute Path (Windows):** `C:\_quotation_script\AP_QT_Generator\code\public_html\upload\quotation\ap\temp\<timestamp>\`
+- **สิ่งที่อยู่ในโฟลเดอร์นี้:** ไฟล์ media plan, reference, synonym ที่อัปโหลดเข้ามา และไฟล์ใบเสนอราคาแต่ละใบ (`.xlsx` และ `.pdf`) ที่สร้างออกมาก่อนถูกนำไป zip
+- **พฤติกรรมการล้าง Temp:** ในฟังก์ชัน `zip_quotationAP()` หลังสร้างไฟล์ ZIP สำเร็จ ระบบจะเรียก `unlink` ลบไฟล์ข้างในและ `rmdir` โฟลเดอร์ temp นั้นออกทันที แต่หากกระบวนการติดขัดหรือเกิด error โฟลเดอร์และไฟล์ใน temp ของรอบนั้นจะยังหลงเหลืออยู่
+
+### 2. โฟลเดอร์จัดเก็บไฟล์ ZIP (Archive)
+เมื่อสร้าง ZIP เรียบร้อย ไฟล์จะถูกเก็บไว้ที่:
+- **Relative Path:** `code/public_html/upload/quotation/ap/archive/`
+- **Absolute Path (Windows):** `C:\_quotation_script\AP_QT_Generator\code\public_html\upload\quotation\ap\archive\`
+- **URL ดาวน์โหลดผ่านเว็บ:** `/upload/quotation/ap/archive/Quotation_{timestamp}.zip` (และ `Quotation_{timestamp}_pdf.zip`)
 
 ```
-upload/quotation/ap/archive/{folder}.zip
-    ├─ 2026-1591_<brief>.xlsx      ← ใบ quotation
-    ├─ 2026-1592_<brief>.xlsx
+upload/quotation/ap/archive/Quotation_{folder}.zip
+    ├─ Quotation_2026-1591_<brief>.xlsx      ← ใบ quotation
+    ├─ Quotation_2026-1592_<brief>.xlsx
     └─ Mediaplan.xlsx              ← plan ที่เติมเลข QT แล้ว (1 แถว = 1 ใบ)
-upload/quotation/ap/archive/{folder}_pdf.zip
+upload/quotation/ap/archive/Quotation_{folder}_pdf.zip
     └─ ทุกใบเป็น PDF
 ```
 

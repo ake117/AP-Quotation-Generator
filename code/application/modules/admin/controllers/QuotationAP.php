@@ -88,7 +88,7 @@ class QuotationAP extends MX_Controller
         $timediff = $endtime - $starttime;
         $txttime = $this->secondsToTime($timediff);
 
-        return "{$str} ".$txttime;
+        return "{$str} ".$txttime . "\n";
     }
     
     function import_quotationAP($uploadFile, $filepath, $worksheet_name, $coldata, $starttime, $result, $inpt_quotation_date='',$quotation_running=0) {
@@ -340,12 +340,18 @@ class QuotationAP extends MX_Controller
                 
         //if ($result["status"] == 'success') {
             $this->export_quotationAP($filepath); 
+            $result['process'] .= $this->showtime($starttime, "Export: ");
             
             $archive = $this->zip_quotationAP($filefolder);
+            $result['process'] .= $this->showtime($starttime, "Zip: ");
             
             //$archive = $this->zip_quotationAP("20201228070826");
             
-            $result["message"] = $result["message"]."<br>Download <a href='{$archive}'>Quotation</a>";
+            $pdfZipPath = FCPATH."upload/quotation/ap/archive/Quotation_{$filefolder}_pdf.zip";
+            $pdfLink = (file_exists($pdfZipPath) && filesize($pdfZipPath) > 0)
+                ? " | <a href='/upload/quotation/ap/archive/Quotation_{$filefolder}_pdf.zip'>PDF</a>"
+                : "";
+            $result["message"] = $result["message"]."<br>Download <a href='{$archive}'>Quotation</a>".$pdfLink;
         //}
         
         } catch (Throwable $e) {
@@ -399,7 +405,7 @@ class QuotationAP extends MX_Controller
         echo json_encode(array(
             'status'       => 'success',
             'quotation_no' => $quotation_no,
-            'contact_name' => ($row !== false && !empty($row['contact_name'])) ? $row['contact_name'] : ' คุณสุวิมล ศีลพิพัฒน์ '
+            'contact_name' => ($row !== false && !empty($row['contact_name'])) ? $row['contact_name'] : ''
         ));
     }
 
@@ -493,6 +499,12 @@ class QuotationAP extends MX_Controller
             ));
 
             foreach ($quotation as $value) {
+                if (empty($value['contact_name'])) {
+                    $resolved = QuotationExporter::resolveContactName($value);
+                    if ($resolved !== null) {
+                        $value['contact_name'] = $resolved;
+                    }
+                }
                 $count = $batch->documentCount($value);
                 if ($count > 1 && empty($value['split_quotation_nos'])) {
                     $issued = QuotationBatch::consecutiveNumbers($year, $running, $count);
@@ -705,8 +717,8 @@ class QuotationAP extends MX_Controller
         $archivepath = FCPATH."upload/quotation/ap/archive/";
 
         // File names
-        $xlsxZipName = "{$folder}.zip";
-        $pdfZipName  = "{$folder}_pdf.zip";
+        $xlsxZipName = "Quotation_{$folder}.zip";
+        $pdfZipName  = "Quotation_{$folder}_pdf.zip";
 
         // The media plan now travels back with the quotations: it carries the QT numbers
         // the import wrote, one row per document, so the team can paste it straight into
@@ -733,11 +745,11 @@ class QuotationAP extends MX_Controller
                     $isPdf  = (substr($entryLower, -4) === '.pdf');
                     $isXlsx = (substr($entryLower, -5) === '.xlsx');
 
-                    if ($isPdf && $pdfZipOk) {
+                    if ($isPdf && $pdfZipOk && preg_match('/^Quotation_/i', $entry)) {
                         $pdfZip->addFile($filepath.$entry, $folder."/".$entry);
                         $pdfCount++;
-                    } elseif ($isXlsx && $xlsxZipOk && preg_match('/^\d{4}[-_]/', $entry)) {
-                        // quotation files start with the quotation no ("2026-1689_...");
+                    } elseif ($isXlsx && $xlsxZipOk && preg_match('/^Quotation_/i', $entry)) {
+                        // quotation files start with "Quotation_..."
                         // everything else in temp (uploaded media plan, AP_Media_Plan_*.xlsx) stays out of the zip
                         $xlsxZip->addFile($filepath.$entry, $folder."/".$entry);
                         $xlsxCount++;
@@ -757,7 +769,7 @@ class QuotationAP extends MX_Controller
                 ? " <a href='/upload/quotation/ap/archive/{$pdfZipName}'>PDF</a>"
                 : "";
 
-            return "/upload/quotation/ap/archive/".$xlsxZipName.$pdfLink;
+            return "/upload/quotation/ap/archive/".$xlsxZipName;
         } else {
             return "error";
         }

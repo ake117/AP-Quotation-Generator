@@ -278,12 +278,50 @@ final class QuotationExporterTest extends TestCase
     public function test_file_names_are_filesystem_safe(): void
     {
         $this->assertSame(
-            '2026-1539_Aspire-Onnut-Station',
+            'Quotation_2026-1539_Aspire-Onnut-Station',
             QuotationExporter::fileName(array(
                 'quotation_no' => '2026/1539',
                 'project_file' => 'Aspire-Onnut-Station',
             ))
         );
         $this->assertStringNotContainsString('/', QuotationExporter::fileName($this->referenceRow()));
+    }
+
+    public function test_contact_name_is_mapped_from_bg(): void
+    {
+        $exporter = $this->exporter();
+
+        // CD
+        $rowCd = $this->referenceRow();
+        unset($rowCd['contact_name']);
+        $rowCd['bg_key'] = 'CD';
+        $sheetCd = $exporter->fill($rowCd)->getActiveSheet();
+        $this->assertSame(' คุณพาณินท์ บุญธรรม ', $sheetCd->getCell('E10')->getValue());
+
+        // SDH
+        $rowSdh = $this->referenceRow();
+        unset($rowSdh['contact_name']);
+        $rowSdh['bg_key'] = 'SDH';
+        $sheetSdh = $exporter->fill($rowSdh)->getActiveSheet();
+        $this->assertSame(' คุณพาณินท์ บุญธรรม ', $sheetSdh->getCell('E10')->getValue());
+
+        // TH
+        $rowTh = $this->referenceRow();
+        unset($rowTh['contact_name']);
+        $rowTh['bg_key'] = 'TH';
+        $sheetTh = $exporter->fill($rowTh)->getActiveSheet();
+        $this->assertSame(' คุณณัฐวรรธน์ โต๊ะดอนทอง ', $sheetTh->getCell('E10')->getValue());
+    }
+
+    public function test_missing_contact_name_and_unknown_bg_throws_exception(): void
+    {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage("ไม่พบชื่อผู้ติดต่อ");
+
+        $row = $this->referenceRow();
+        unset($row['contact_name']);
+        $row['bg_key'] = 'UNKNOWN_BG';
+
+        $this->exporter()->fill($row);
     }
 }

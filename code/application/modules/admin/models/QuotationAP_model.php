@@ -8,6 +8,19 @@ class QuotationAP_model extends MY_Model
     function insert_data($table, $data)  
     {
         $this->db->truncate($table);
+        if (empty($data)) {
+            return TRUE;
+        }
+        // Filter out fields that do not exist in the table to prevent "Unknown column" errors
+        $fields = $this->db->list_fields($table);
+        if (!empty($fields)) {
+            $fieldMap = array_flip($fields);
+            $filtered = array();
+            foreach ($data as $row) {
+                $filtered[] = array_intersect_key($row, $fieldMap);
+            }
+            $data = $filtered;
+        }
         return $this->db->insert_batch($table, $data);   // FALSE on failure -> caller can report the DB error
     } 
     
@@ -163,6 +176,8 @@ SQL;
                         'quotation_date'   => $quotation_date,
                         'job_no'           => $job_no
                 );
+
+
 
                 $this->db->where('id', $value['id']);
                 $this->db->update('quotation_ap_data', $data);                                

@@ -16,8 +16,17 @@ use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 
+require_once __DIR__ . '/DotEnv.php';
+
 class QuotationExporter
 {
+    /** @var array<string, string> Map BG to Contact Name for cell E10 */
+    public const BG_CONTACTS = array(
+        'CD'  => 'คุณพาณินท์ บุญธรรม',
+        'SDH' => 'คุณพาณินท์ บุญธรรม',
+        'TH'  => 'คุณณัฐวรรธน์ โต๊ะดอนทอง',
+    );
+
     /** @var array<int,array{file:string,width:float,height:float,anchor:string}> */
     private const IMAGES = array(
         array('file' => 'ewit_resizeto_075x110in-and_140x100in.png', 'width' => 71.25, 'height' => 104.5, 'anchor' => 'A2'),
@@ -71,6 +80,46 @@ class QuotationExporter
      * Apply one row to a fresh copy of the template. Public so a test can assert the
      * cells without writing a file.
      */
+    /**
+     * Resolve contact name from explicit field or BG mapping.
+     */
+    public static function resolveContactName(array $row): ?string
+    {
+        if (!empty($row['contact_name']) && trim((string)$row['contact_name']) !== '') {
+            return (string)$row['contact_name'];
+        }
+
+        DotEnv::load();
+
+        $bg = $row['bg_key'] ?? $row['bg'] ?? $row['BG'] ?? null;
+        if ($bg !== null) {
+            $bgUpper = strtoupper(trim((string)$bg));
+
+            // 1. Check specific BG_CONTACT_<BG> (e.g. BG_CONTACT_TH, BG_CONTACT_CD, BG_CONTACT_SDH)
+            $envKey = "BG_CONTACT_{$bgUpper}";
+            $envVal = getenv($envKey) ?: ($_ENV[$envKey] ?? null);
+            if (!empty($envVal) && trim((string)$envVal) !== '') {
+                return ' ' . trim((string)$envVal) . ' ';
+            }
+
+            // 2. Check JSON dictionary in BG_CONTACTS
+            $jsonVal = getenv('BG_CONTACTS') ?: ($_ENV['BG_CONTACTS'] ?? null);
+            if (!empty($jsonVal)) {
+                $decoded = json_decode((string)$jsonVal, true);
+                if (is_array($decoded) && isset($decoded[$bgUpper]) && trim((string)$decoded[$bgUpper]) !== '') {
+                    return ' ' . trim((string)$decoded[$bgUpper]) . ' ';
+                }
+            }
+
+            // 3. Fallback to hardcoded default mapping
+            if (isset(self::BG_CONTACTS[$bgUpper])) {
+                return ' ' . self::BG_CONTACTS[$bgUpper] . ' ';
+            }
+        }
+
+        return null;
+    }
+
     public function fill(array $row): Spreadsheet
     {
         $quotation_date = date_create($row['quotation_date']);
@@ -95,7 +144,13 @@ class QuotationExporter
 
         $sheet->setCellValue('K12', $row['quotation_no']);
         $sheet->setCellValue('K14', $row['job_no']);
-        $sheet->setCellValue('E10', $row['contact_name']);
+        $contactName = self::resolveContactName($row);
+        if ($contactName === null) {
+            $quotationNo = $row['quotation_no'] ?? 'unknown';
+            $bg = $row['bg_key'] ?? $row['bg'] ?? $row['BG'] ?? 'N/A';
+            throw new InvalidArgumentException("ไม่พบชื่อผู้ติดต่อ (contact_name) สำหรับใบเสนอราคา {$quotationNo} (BG: '{$bg}') เพื่อใส่ใน cell E10");
+        }
+        $sheet->setCellValue('E10', $contactName);
         $sheet->setCellValue('E11', $row['company_title']);
         $sheet->setCellValue('E12', $row['company_address']);
 
@@ -261,10 +316,10 @@ class QuotationExporter
         return abs(round($pureMedia, 2) - $pureMedia) < 0.0000005 ? 2 : 6;
     }
 
-    /** `<quotation_no>_<project>`, filesystem-safe. */
+    /** `Quotation_<quotation_no>_<project>`, filesystem-safe. */
     public static function fileName(array $row): string
     {
-        return self::sanitizeText($row['quotation_no'] . '_' . $row['project_file'], '-');
+        return self::sanitizeText('Quotation_' . $row['quotation_no'] . '_' . $row['project_file'], '-');
     }
 
     public static function sanitizeText(string $text, string $sep = '-', int $len = 74): string

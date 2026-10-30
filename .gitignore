@@ -1,3 +1,5 @@
+.env
+code/.env
 # Environment & Keys
 .cache/
 .gnupg/
@@ -33,3 +35,9 @@ code/.phpunit.cache/
 
 # Service account key for the Google Sheets import
 code/application/config/google-service-account.json
+
+# Quotation uploads and generated archives
+code/public_html/upload/quotation/ap/archive/*.zip
+code/public_html/upload/quotation/ap/temp/
+!code/public_html/upload/quotation/ap/archive/.gitkeep
+!code/public_html/upload/quotation/ap/temp/.gitkeep

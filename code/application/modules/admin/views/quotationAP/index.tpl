@@ -273,15 +273,13 @@ table.dataTable th {
     } );
 </script>
 <script>
-    //$('#combobox').combobox();
-    
     function submit_quotation($form) {
         
         $("#process_message").html("");
         $(".modal_loading").show();
         
         $.ajax({
-            url:'{$base_url}/admin/quotationAP/quotationAP/',
+            url:location.origin+'/admin/quotationAP/quotationAP/',
             type:"post",
             data:new FormData($form),
             processData:false,
@@ -293,7 +291,7 @@ table.dataTable th {
                 var res;
                 try { res = JSON.parse(data); }
                 catch (e) {
-                    // PHP warning/fatal printed before the JSON: show it instead of a bare "Process Error"
+                    /* PHP warning/fatal printed before the JSON: show it instead of a bare "Process Error" */
                     res = { status:'error', message:'Non-JSON response: ' + String(data).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().substring(0,800) };
                 }
                 
@@ -314,15 +312,13 @@ table.dataTable th {
                 }
                 
                 $("#process_message").append(res.message || (res.status=='success' ? '' : 'no error details returned — check application/logs')); 
-                if (res.process) { $("#process_message").append("<pre style='white-space:pre-wrap;font-size:11px;'>"+res.process+"</pre>"); }
-                
-                //alert("Quotation AP Successful.");
+                if (res.process) {
+                    $("#process_message").append($('<pre style="white-space:pre-wrap;font-size:11px;margin-top:10px;"></pre>').text(res.process));
+                }
             },
             error: function() {
                 $(".modal_loading").hide();
                 $("#process_message").append("Quotation AP Error."); 
-                
-                //alert("Quotation AP Error.");
             }
             
         });
@@ -333,7 +329,7 @@ table.dataTable th {
         $quotation_date = $("#quotation_date").val();
         
         $.ajax({
-            url:'{$base_url}/admin/quotationAP/get_quotationAP_running/',
+            url:location.origin+'/admin/quotationAP/get_quotationAP_running/',
             type:"post",
             data: { quotation_date : $quotation_date },
             cache:false,
@@ -427,10 +423,11 @@ table.dataTable th {
             $("#process_message").html("");
             $(".modal_loading").show();
 
+            var form = $('#submit_upload1')[0];
             $.ajax({
-                url:'{$base_url}/admin/quotationAP/quotationAP_export/',
+                url:location.origin+'/admin/quotationAP/quotationAP_export/',
                 type:"post",
-                data:new FormData($form),
+                data:new FormData(form),
                 processData:false,
                 contentType:false,
                 cache:false,
@@ -451,7 +448,9 @@ table.dataTable th {
                     }
 
                     $("#process_message").append(res.message || (res.status=='success' ? '' : 'no error details returned — check application/logs'));                
-                    if (res.process) { $("#process_message").append("<pre style='white-space:pre-wrap;font-size:11px;'>"+res.process+"</pre>"); }
+                    if (res.process) {
+                        $("#process_message").append($('<pre style="white-space:pre-wrap;font-size:11px;margin-top:10px;"></pre>').text(res.process));
+                    }
                 },
 
             });

@@ -46,6 +46,10 @@
  */
 date_default_timezone_set('Asia/Bangkok');
 
+// Load environment variables from .env
+require_once __DIR__ . '/../application/libraries/DotEnv.php';
+DotEnv::load();
+
 /*
  *---------------------------------------------------------------
  * APPLICATION ENVIRONMENT
