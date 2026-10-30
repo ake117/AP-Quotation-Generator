@@ -246,14 +246,17 @@ class QuotationExporter
         return 'soffice';
     }
 
-    /** Convert an .xlsx to PDF next to it, using LibreOffice headless. */
-    public function convertToPdf(string $xlsxPath): ?string
+    /** Convert an .xlsx to PDF next to it (or in $outDir if specified), using LibreOffice headless. */
+    public function convertToPdf(string $xlsxPath, ?string $outDir = null): ?string
     {
         if (!file_exists($xlsxPath)) {
             return null;
         }
 
-        $dir = dirname($xlsxPath);
+        $dir = $outDir !== null ? $outDir : dirname($xlsxPath);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0777, true);
+        }
         $binary = self::sofficeBinary();
 
         if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
@@ -267,7 +270,7 @@ class QuotationExporter
 
         exec($cmd, $output, $exitCode);
 
-        $pdf = substr($xlsxPath, 0, -5) . '.pdf';
+        $pdf = rtrim($dir, '/\\') . DIRECTORY_SEPARATOR . substr(basename($xlsxPath), 0, -5) . '.pdf';
 
         return ($exitCode === 0 && file_exists($pdf)) ? $pdf : null;
     }

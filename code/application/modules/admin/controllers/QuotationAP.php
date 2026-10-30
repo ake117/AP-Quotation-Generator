@@ -288,9 +288,12 @@ class QuotationAP extends MX_Controller
         $excel_source_path = trim((string)$this->input->post('excel_source_path'));
         $excel_source_path = trim($excel_source_path, "\"'");
 
-        // Direct PDF conversion from specified Excel path
-        if ($export_type === 'pdf' && !empty($excel_source_path)) {
-            $result = $this->convert_path_to_pdf($excel_source_path, $starttime);
+        $pdf_output_path   = trim((string)$this->input->post('pdf_output_path'));
+        $pdf_output_path   = trim($pdf_output_path, "\"'");
+
+        // Direct PDF conversion from specified Excel path (No ZIP needed)
+        if ($export_type === 'pdf') {
+            $result = $this->convert_path_to_pdf($excel_source_path, $pdf_output_path, $starttime);
             echo json_encode($result);
             return;
         }
@@ -709,18 +712,25 @@ class QuotationAP extends MX_Controller
      */
     /**
      * Convert existing quotation Excel files from a specified directory, file, or zip to PDF.
+     * Directly outputs PDF files into the specified output path without creating a ZIP archive.
      */
-    public function convert_path_to_pdf($source_path, $starttime)
+    public function convert_path_to_pdf($source_path, $output_path, $starttime)
     {
         require_once APPPATH . 'libraries/QuotationExporter.php';
         $result = array('status' => 'error', 'message' => '', 'process' => '');
 
         $source_path = trim(trim($source_path), "\"'");
+        $output_path = trim(trim($output_path), "\"'");
 
-        // 1. Resolve path
-        $resolved_path = null;
+        if (empty($source_path)) {
+            $result['message'] = "กรุณาระบุ Path ของโฟลเดอร์หรือไฟล์ Quotation (Excel) ต้นทาง";
+            return $result;
+        }
+
+        // 1. Resolve source path
+        $resolved_source = null;
         if (file_exists($source_path)) {
-            $resolved_path = realpath($source_path);
+            $resolved_source = realpath($source_path);
         } else {
             $candidates = array(
                 FCPATH . ltrim($source_path, '/\\'),
@@ -732,38 +742,74 @@ class QuotationAP extends MX_Controller
             );
             foreach ($candidates as $cand) {
                 if (file_exists($cand)) {
-                    $resolved_path = realpath($cand);
+                    $resolved_source = realpath($cand);
                     break;
                 }
             }
         }
 
-        if (!$resolved_path || !file_exists($resolved_path)) {
-            $result['message'] = "ไม่พบไฟล์หรือโฟลเดอร์ตาม path ที่ระบุ: " . htmlspecialchars($source_path);
+        if (!$resolved_source || !file_exists($resolved_source)) {
+            $result['message'] = "ไม่พบไฟล์หรือโฟลเดอร์ต้นทางตาม path ที่ระบุ: " . htmlspecialchars($source_path);
             return $result;
         }
 
-        $filefolder = date('Ymdhis');
-        $temp_dir = FCPATH . "upload/quotation/ap/temp/{$filefolder}/";
-        if (!is_dir($temp_dir)) {
-            mkdir($temp_dir, 0777, true);
+        // 2. Resolve output directory
+        $target_output_dir = null;
+        if (!empty($output_path)) {
+            if (!is_dir($output_path)) {
+                @mkdir($output_path, 0777, true);
+            }
+            if (is_dir($output_path)) {
+                $target_output_dir = realpath($output_path) ?: $output_path;
+            } else {
+                $cand_out = FCPATH . ltrim($output_path, '/\\');
+                if (!is_dir($cand_out)) {
+                    @mkdir($cand_out, 0777, true);
+                }
+                $target_output_dir = realpath($cand_out) ?: $cand_out;
+            }
+        } else {
+            // Default output directory: same directory as input if it's a directory
+            if (is_dir($resolved_source)) {
+                $target_output_dir = $resolved_source;
+            } elseif (is_file($resolved_source) && strtolower(substr($resolved_source, -5)) === '.xlsx') {
+                $target_output_dir = dirname($resolved_source);
+            } else {
+                // If input is a ZIP and no output_path given, create a folder next to it
+                $target_output_dir = dirname($resolved_source) . DIRECTORY_SEPARATOR . 'pdf_' . basename($resolved_source, '.zip');
+                if (!is_dir($target_output_dir)) {
+                    @mkdir($target_output_dir, 0777, true);
+                }
+            }
+        }
+
+        if (!$target_output_dir || !is_dir($target_output_dir)) {
+            $result['message'] = "ไม่สามารถสร้างหรือเข้าถึง Output Path ที่ระบุได้: " . htmlspecialchars($output_path);
+            return $result;
         }
 
         $root = realpath(dirname(__FILE__).'/../../../..');
         $exporter = new QuotationExporter('', $root.'/public_html/upload/quotation/ap/img/');
 
         $files_to_convert = array();
+        $is_zip = (is_file($resolved_source) && strtolower(substr($resolved_source, -4)) === '.zip');
+        $temp_zip_dir = null;
 
-        // 2. Collect .xlsx files
-        if (is_file($resolved_path) && strtolower(substr($resolved_path, -4)) === '.zip') {
+        // 3. Collect .xlsx files
+        if ($is_zip) {
+            $filefolder = date('Ymdhis');
+            $temp_zip_dir = FCPATH . "upload/quotation/ap/temp/{$filefolder}/";
+            if (!is_dir($temp_zip_dir)) {
+                @mkdir($temp_zip_dir, 0777, true);
+            }
             $zip = new ZipArchive;
-            if ($zip->open($resolved_path) === TRUE) {
+            if ($zip->open($resolved_source) === TRUE) {
                 for ($i = 0; $i < $zip->numFiles; $i++) {
                     $entryName = $zip->getNameIndex($i);
                     $baseName = basename($entryName);
                     if (strtolower(substr($baseName, -5)) === '.xlsx' && !preg_match('/^AP_Media_Plan/i', $baseName)) {
-                        $destFile = $temp_dir . $baseName;
-                        copy("zip://".$resolved_path."#".$entryName, $destFile);
+                        $destFile = $temp_zip_dir . $baseName;
+                        copy("zip://".$resolved_source."#".$entryName, $destFile);
                         if (file_exists($destFile)) {
                             $files_to_convert[] = $destFile;
                         }
@@ -771,48 +817,46 @@ class QuotationAP extends MX_Controller
                 }
                 $zip->close();
             }
-        } elseif (is_file($resolved_path) && strtolower(substr($resolved_path, -5)) === '.xlsx') {
-            $baseName = basename($resolved_path);
-            $destFile = $temp_dir . $baseName;
-            copy($resolved_path, $destFile);
-            $files_to_convert[] = $destFile;
-        } elseif (is_dir($resolved_path)) {
-            $entries = scandir($resolved_path);
+        } elseif (is_file($resolved_source) && strtolower(substr($resolved_source, -5)) === '.xlsx') {
+            $files_to_convert[] = $resolved_source;
+        } elseif (is_dir($resolved_source)) {
+            $entries = scandir($resolved_source);
             foreach ($entries as $entry) {
                 if ($entry === '.' || $entry === '..') continue;
                 if (strtolower(substr($entry, -5)) === '.xlsx' && !preg_match('/^AP_Media_Plan/i', $entry)) {
-                    $destFile = $temp_dir . $entry;
-                    copy($resolved_path . DIRECTORY_SEPARATOR . $entry, $destFile);
-                    $files_to_convert[] = $destFile;
+                    $files_to_convert[] = $resolved_source . DIRECTORY_SEPARATOR . $entry;
                 }
             }
         }
 
         if (empty($files_to_convert)) {
-            @rmdir($temp_dir);
+            if ($temp_zip_dir && is_dir($temp_zip_dir)) {
+                @rmdir($temp_zip_dir);
+            }
             $result['message'] = "ไม่พบไฟล์ Quotation Excel (.xlsx) ใน path ที่ระบุ";
             return $result;
         }
 
-        // 3. Convert to PDF
+        // 4. Convert directly into target output dir (NO ZIP needed)
         $converted_count = 0;
         foreach ($files_to_convert as $xlsx) {
-            $pdf = $exporter->convertToPdf($xlsx);
+            $pdf = $exporter->convertToPdf($xlsx, $target_output_dir);
             if ($pdf && file_exists($pdf)) {
                 $converted_count++;
             }
         }
 
+        // Clean up temp zip extracted files if used
+        if ($temp_zip_dir && is_dir($temp_zip_dir)) {
+            array_map('unlink', glob("{$temp_zip_dir}/*.*"));
+            @rmdir($temp_zip_dir);
+        }
+
         $result['process'] .= $this->showtime($starttime, "PDF Conversion ({$converted_count}/" . count($files_to_convert) . "): ");
 
-        // 4. Zip the PDFs
-        $archive = $this->zip_quotationAP($filefolder, 'pdf');
-        $result['process'] .= $this->showtime($starttime, "Zip: ");
-
-        $pdfZipPath = FCPATH . "upload/quotation/ap/archive/Quotation_{$filefolder}_pdf.zip";
-        if (file_exists($pdfZipPath) && filesize($pdfZipPath) > 0) {
+        if ($converted_count > 0) {
             $result['status'] = 'success';
-            $result['message'] = "แปลงไฟล์ PDF สำเร็จ ({$converted_count} ไฟล์)<br>Download <a href='/upload/quotation/ap/archive/Quotation_{$filefolder}_pdf.zip'>Quotation (PDF)</a>";
+            $result['message'] = "แปลงไฟล์ PDF สำเร็จทั้งหมด <strong>{$converted_count}</strong> ไฟล์<br>📁 บันทึกไฟล์ไว้ที่: <code>" . htmlspecialchars($target_output_dir) . "</code>";
         } else {
             $result['status'] = 'error';
             $result['message'] = "แปลง PDF ไม่สำเร็จ (แปลงได้ 0 จาก " . count($files_to_convert) . " ไฟล์) กรุณาตรวจสอบการติดตั้ง LibreOffice";

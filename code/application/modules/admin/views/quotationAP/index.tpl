@@ -84,14 +84,25 @@
                         </div>
                         <div class="row" id="pdf_path_row" style="display: none;">
                             <div class="col-md-12">
-                                <div class="form-group" style="background: #fdf7f7; border: 1px solid #ebccd1; border-radius: 4px; padding: 12px 15px; margin-bottom: 20px;">
-                                    <label for="excel_source_path" style="color: #a94442; font-weight: 600;">
-                                        <i class="fa fa-folder-open-o"></i> ระบุ Path ของโฟลเดอร์หรือไฟล์ Quotation (Excel) ที่ต้องการแปลงเป็น PDF:
-                                    </label>
-                                    <input type="text" id="excel_source_path" name="excel_source_path" class="form-control" placeholder="เช่น C:\_quotation_script\AP_QT_Generator\code\public_html\upload\quotation\ap\temp\20261030052511 หรือไฟล์ .zip">
-                                    <span class="help-block" style="color: #777; margin-top: 5px; margin-bottom: 0; font-size: 12px;">
-                                        * สามารถระบุเป็น Full Path ของโฟลเดอร์, Relative Path ใน upload/, หรือ Path ของไฟล์ ZIP ที่มีไฟล์ Excel อยู่ข้างในได้
-                                    </span>
+                                <div class="form-group" style="background: #fdf7f7; border: 1px solid #ebccd1; border-radius: 4px; padding: 15px; margin-bottom: 20px;">
+                                    <div class="form-group" style="margin-bottom: 15px;">
+                                        <label for="excel_source_path" style="color: #a94442; font-weight: 600;">
+                                            <i class="fa fa-folder-open-o"></i> 1. Path ของโฟลเดอร์หรือไฟล์ Quotation (Excel) ต้นทาง: <span class="text-danger">*</span>
+                                        </label>
+                                        <input type="text" id="excel_source_path" name="excel_source_path" class="form-control" placeholder="เช่น C:\_quotation_script\AP_QT_Generator\code\public_html\upload\quotation\ap\temp\20261030052511 หรือไฟล์ .zip">
+                                        <span class="help-block" style="color: #777; margin-top: 5px; margin-bottom: 0; font-size: 12px;">
+                                            * ระบุโฟลเดอร์ที่มีไฟล์ Excel Quotation หรือไฟล์ ZIP ต้นทาง
+                                        </span>
+                                    </div>
+                                    <div class="form-group" style="margin-bottom: 5px;">
+                                        <label for="pdf_output_path" style="color: #a94442; font-weight: 600;">
+                                            <i class="fa fa-folder-o"></i> 2. Output Path สำหรับบันทึกไฟล์ PDF (เว้นว่างได้):
+                                        </label>
+                                        <input type="text" id="pdf_output_path" name="pdf_output_path" class="form-control" placeholder="เช่น D:\AP_PDF_Output หรือ C:\_quotation_script\AP_QT_Generator\output_pdf (เว้นว่าง = โฟลเดอร์เดียวกับต้นทาง)">
+                                        <span class="help-block" style="color: #777; margin-top: 5px; margin-bottom: 0; font-size: 12px;">
+                                            * หากเว้นว่างไว้ ระบบจะบันทึกไฟล์ PDF ไว้ที่โฟลเดอร์เดียวกับไฟล์ Excel ต้นทางโดยตรง (ไม่ทำเป็นไฟล์ ZIP)
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
                         </div>    
