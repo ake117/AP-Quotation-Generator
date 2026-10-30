@@ -290,26 +290,31 @@ table.dataTable th {
             success: function(data){
                 $(".modal_loading").hide();
                 
-                data = JSON.parse(data);
-                console.log(data.status);
+                var res;
+                try { res = JSON.parse(data); }
+                catch (e) {
+                    // PHP warning/fatal printed before the JSON: show it instead of a bare "Process Error"
+                    res = { status:'error', message:'Non-JSON response: ' + String(data).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().substring(0,800) };
+                }
                 
-                if (data.status=='success') {
+                if (res.status=='success') {
                     $("#process_message").html("Process Success<br>");
                 } else {
                     $("#process_message").html("Process Error<br>");
                 }
                 
-                if (typeof(data.file_quotation_ref)!='undefined') {
-                    $(".file_quotation_ref").html("Last Update : "+data.file_quotation_ref);
+                if (typeof(res.file_quotation_ref)!='undefined') {
+                    $(".file_quotation_ref").html("Last Update : "+res.file_quotation_ref);
                 }
-                if (typeof(data.file_quotation_synonym)!='undefined') {
-                    $(".file_quotation_synonym").html("Last Update : "+data.file_quotation_synonym);
+                if (typeof(res.file_quotation_synonym)!='undefined') {
+                    $(".file_quotation_synonym").html("Last Update : "+res.file_quotation_synonym);
                 }
-                if (typeof(data.file_quotation_data)!='undefined') {
-                    $(".file_quotation_data").html("Last Update : "+data.file_quotation_data);
+                if (typeof(res.file_quotation_data)!='undefined') {
+                    $(".file_quotation_data").html("Last Update : "+res.file_quotation_data);
                 }
                 
-                $("#process_message").append(data.message); 
+                $("#process_message").append(res.message || (res.status=='success' ? '' : 'no error details returned — check application/logs')); 
+                if (res.process) { $("#process_message").append("<pre style='white-space:pre-wrap;font-size:11px;'>"+res.process+"</pre>"); }
                 
                 //alert("Quotation AP Successful.");
             },
@@ -432,17 +437,21 @@ table.dataTable th {
                 success: function(data){
                     $(".modal_loading").hide();
 
-                    data = JSON.parse(data);
-                    console.log(data.status);
+                    var res;
+                    try { res = JSON.parse(data); }
+                    catch (e) {
+                        res = { status:'error', message:'Non-JSON response: ' + String(data).replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().substring(0,800) };
+                    }
 
-                    if (data.status=='success') {
+                    if (res.status=='success') {
                         $("#process_message").html("Process Success<br>");
+                        alert("Quotation AP Successful.");
                     } else {
                         $("#process_message").html("Process Error<br>");
                     }
 
-                    $("#process_message").append(data.message);                
-                    alert("Quotation AP Successful.");
+                    $("#process_message").append(res.message || (res.status=='success' ? '' : 'no error details returned — check application/logs'));                
+                    if (res.process) { $("#process_message").append("<pre style='white-space:pre-wrap;font-size:11px;'>"+res.process+"</pre>"); }
                 },
 
             });

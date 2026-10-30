@@ -181,7 +181,14 @@ class QuotationAP extends MX_Controller
                             }
                         }
 
-                        $this->quotation->insert_data($coldata['table'],$data_import);
+                        if ($this->quotation->insert_data($coldata['table'], $data_import) === FALSE) {
+                            $dberr = $this->db->error();
+                            $result['status']  = 'error';
+                            $result['message'] = 'Insert into '.$coldata['table'].' failed: '
+                                .($dberr['message'] !== '' ? $dberr['message'] : 'unknown database error')
+                                .' (code '.$dberr['code'].')';
+                            return $result;
+                        }
                         
                         if ($uploadFile == 'file_quotation_data') {
                             $this->quotation->update_quotationAP_running($inpt_quotation_date, $quotation_running);
@@ -254,7 +261,10 @@ class QuotationAP extends MX_Controller
         
         $starttime = microtime(true);
         
-//        ini_set('post_max_size','200M');
+        // Surface DB/exception details to the AJAX caller instead of dying with an HTML error page
+        $this->db->db_debug = FALSE;
+        try {
+
 //        ini_set('upload_max_filesize','200M');
 //        ini_set('max_execution_time','200M');
 //        ini_set('max_input_time','200M');
@@ -338,6 +348,12 @@ class QuotationAP extends MX_Controller
             $result["message"] = $result["message"]."<br>Download <a href='{$archive}'>Quotation</a>";
         //}
         
+        } catch (Throwable $e) {
+            $result['status']  = 'error';
+            $result['message'] = get_class($e).': '.$e->getMessage()
+                .' @ '.basename($e->getFile()).':'.$e->getLine();
+        }
+
         echo json_encode($result);    
         return;
             
@@ -575,7 +591,10 @@ class QuotationAP extends MX_Controller
                 return $this->output->set_content_type('application/json')->set_output(json_encode($result));
             }
 
-            $this->quotation->insert_data('quotation_ap_data', $data_import);
+            if ($this->quotation->insert_data('quotation_ap_data', $data_import) === FALSE) {
+                $dberr = $this->db->error();
+                throw new RuntimeException('Insert failed: '.($dberr['message'] !== '' ? $dberr['message'] : 'unknown database error').' (code '.$dberr['code'].')');
+            }
             $this->quotation->update_quotationAP_running($inpt_quotation_date, $running);
 
             $result['process'] .= $this->showtime($starttime, "Insert: ");

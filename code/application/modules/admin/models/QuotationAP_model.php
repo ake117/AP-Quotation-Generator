@@ -8,7 +8,7 @@ class QuotationAP_model extends MY_Model
     function insert_data($table, $data)  
     {
         $this->db->truncate($table);
-        $this->db->insert_batch($table, $data);
+        return $this->db->insert_batch($table, $data);   // FALSE on failure -> caller can report the DB error
     } 
     
     function get_quotationAP_doc()  
