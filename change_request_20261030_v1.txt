@@ -3,3 +3,4 @@ AP Quotation Generator - Change Request
 - [x] ในการ zip ไฟล์ excel เปลี่ยนจากการดูตัวเลขปี ให้เปลี่ยนเป็นเช็กว่าชื่อไฟล์นำหน้าด้วย "Quotation_" รึเปล่า
 - [x] อยากได้ option เลือกว่าเอาเฉพาะ excel ไฟล์ หรือ pdf ด้วย
 - [x] ข้างหน้าไฟล์ zip ให้ใส่ "Quotation_"
+- [x] ขออีก option "PDF" อย่างเดียว โดยให้ user ระบุ path ของ quotation (excel)

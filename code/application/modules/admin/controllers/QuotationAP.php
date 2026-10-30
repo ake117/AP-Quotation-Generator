@@ -282,6 +282,19 @@ class QuotationAP extends MX_Controller
         
         $quotation_running = $this->input->post('quotation_running');
         $export_type       = $this->input->post('export_type');
+        if (empty($export_type)) {
+            $export_type = 'both';
+        }
+        $excel_source_path = trim((string)$this->input->post('excel_source_path'));
+        $excel_source_path = trim($excel_source_path, "\"'");
+
+        // Direct PDF conversion from specified Excel path
+        if ($export_type === 'pdf' && !empty($excel_source_path)) {
+            $result = $this->convert_path_to_pdf($excel_source_path, $starttime);
+            echo json_encode($result);
+            return;
+        }
+
         $convert_pdf       = ($export_type !== 'excel');                 
         
         $filefolder = date('Ymdhis');                
@@ -344,16 +357,25 @@ class QuotationAP extends MX_Controller
             $this->export_quotationAP($filepath, $convert_pdf); 
             $result['process'] .= $this->showtime($starttime, "Export: ");
             
-            $archive = $this->zip_quotationAP($filefolder, $convert_pdf);
+            $archive = $this->zip_quotationAP($filefolder, $export_type);
             $result['process'] .= $this->showtime($starttime, "Zip: ");
             
-            //$archive = $this->zip_quotationAP("20201228070826");
-            
-            $pdfZipPath = FCPATH."upload/quotation/ap/archive/Quotation_{$filefolder}_pdf.zip";
-            $pdfLink = ($convert_pdf && file_exists($pdfZipPath) && filesize($pdfZipPath) > 0)
-                ? " | <a href='/upload/quotation/ap/archive/Quotation_{$filefolder}_pdf.zip'>PDF</a>"
-                : "";
-            $result["message"] = $result["message"]."<br>Download <a href='{$archive}'>Quotation</a>".$pdfLink;
+            $xlsxZipPath = FCPATH."upload/quotation/ap/archive/Quotation_{$filefolder}.zip";
+            $pdfZipPath  = FCPATH."upload/quotation/ap/archive/Quotation_{$filefolder}_pdf.zip";
+
+            $downloadLinks = array();
+            if (file_exists($xlsxZipPath) && filesize($xlsxZipPath) > 0) {
+                $downloadLinks[] = "<a href='/upload/quotation/ap/archive/Quotation_{$filefolder}.zip'>Quotation (Excel)</a>";
+            }
+            if (file_exists($pdfZipPath) && filesize($pdfZipPath) > 0) {
+                $downloadLinks[] = "<a href='/upload/quotation/ap/archive/Quotation_{$filefolder}_pdf.zip'>Quotation (PDF)</a>";
+            }
+
+            if (!empty($downloadLinks)) {
+                $result["message"] = $result["message"]."<br>Download " . implode(' | ', $downloadLinks);
+            } else {
+                $result["message"] = $result["message"]."<br>Download <a href='{$archive}'>Quotation</a>";
+            }
         //}
         
         } catch (Throwable $e) {
@@ -685,6 +707,120 @@ class QuotationAP extends MX_Controller
      * Convert an .xlsx file to PDF using LibreOffice headless.
      * The PDF is written next to the source file. Returns true on success.
      */
+    /**
+     * Convert existing quotation Excel files from a specified directory, file, or zip to PDF.
+     */
+    public function convert_path_to_pdf($source_path, $starttime)
+    {
+        require_once APPPATH . 'libraries/QuotationExporter.php';
+        $result = array('status' => 'error', 'message' => '', 'process' => '');
+
+        $source_path = trim(trim($source_path), "\"'");
+
+        // 1. Resolve path
+        $resolved_path = null;
+        if (file_exists($source_path)) {
+            $resolved_path = realpath($source_path);
+        } else {
+            $candidates = array(
+                FCPATH . ltrim($source_path, '/\\'),
+                FCPATH . 'upload/' . ltrim($source_path, '/\\'),
+                FCPATH . 'upload/quotation/ap/' . ltrim($source_path, '/\\'),
+                FCPATH . 'upload/quotation/ap/temp/' . ltrim($source_path, '/\\'),
+                FCPATH . 'upload/quotation/ap/archive/' . ltrim($source_path, '/\\'),
+                realpath(dirname(__FILE__).'/../../../..') . '/' . ltrim($source_path, '/\\'),
+            );
+            foreach ($candidates as $cand) {
+                if (file_exists($cand)) {
+                    $resolved_path = realpath($cand);
+                    break;
+                }
+            }
+        }
+
+        if (!$resolved_path || !file_exists($resolved_path)) {
+            $result['message'] = "ไม่พบไฟล์หรือโฟลเดอร์ตาม path ที่ระบุ: " . htmlspecialchars($source_path);
+            return $result;
+        }
+
+        $filefolder = date('Ymdhis');
+        $temp_dir = FCPATH . "upload/quotation/ap/temp/{$filefolder}/";
+        if (!is_dir($temp_dir)) {
+            mkdir($temp_dir, 0777, true);
+        }
+
+        $root = realpath(dirname(__FILE__).'/../../../..');
+        $exporter = new QuotationExporter('', $root.'/public_html/upload/quotation/ap/img/');
+
+        $files_to_convert = array();
+
+        // 2. Collect .xlsx files
+        if (is_file($resolved_path) && strtolower(substr($resolved_path, -4)) === '.zip') {
+            $zip = new ZipArchive;
+            if ($zip->open($resolved_path) === TRUE) {
+                for ($i = 0; $i < $zip->numFiles; $i++) {
+                    $entryName = $zip->getNameIndex($i);
+                    $baseName = basename($entryName);
+                    if (strtolower(substr($baseName, -5)) === '.xlsx' && !preg_match('/^AP_Media_Plan/i', $baseName)) {
+                        $destFile = $temp_dir . $baseName;
+                        copy("zip://".$resolved_path."#".$entryName, $destFile);
+                        if (file_exists($destFile)) {
+                            $files_to_convert[] = $destFile;
+                        }
+                    }
+                }
+                $zip->close();
+            }
+        } elseif (is_file($resolved_path) && strtolower(substr($resolved_path, -5)) === '.xlsx') {
+            $baseName = basename($resolved_path);
+            $destFile = $temp_dir . $baseName;
+            copy($resolved_path, $destFile);
+            $files_to_convert[] = $destFile;
+        } elseif (is_dir($resolved_path)) {
+            $entries = scandir($resolved_path);
+            foreach ($entries as $entry) {
+                if ($entry === '.' || $entry === '..') continue;
+                if (strtolower(substr($entry, -5)) === '.xlsx' && !preg_match('/^AP_Media_Plan/i', $entry)) {
+                    $destFile = $temp_dir . $entry;
+                    copy($resolved_path . DIRECTORY_SEPARATOR . $entry, $destFile);
+                    $files_to_convert[] = $destFile;
+                }
+            }
+        }
+
+        if (empty($files_to_convert)) {
+            @rmdir($temp_dir);
+            $result['message'] = "ไม่พบไฟล์ Quotation Excel (.xlsx) ใน path ที่ระบุ";
+            return $result;
+        }
+
+        // 3. Convert to PDF
+        $converted_count = 0;
+        foreach ($files_to_convert as $xlsx) {
+            $pdf = $exporter->convertToPdf($xlsx);
+            if ($pdf && file_exists($pdf)) {
+                $converted_count++;
+            }
+        }
+
+        $result['process'] .= $this->showtime($starttime, "PDF Conversion ({$converted_count}/" . count($files_to_convert) . "): ");
+
+        // 4. Zip the PDFs
+        $archive = $this->zip_quotationAP($filefolder, 'pdf');
+        $result['process'] .= $this->showtime($starttime, "Zip: ");
+
+        $pdfZipPath = FCPATH . "upload/quotation/ap/archive/Quotation_{$filefolder}_pdf.zip";
+        if (file_exists($pdfZipPath) && filesize($pdfZipPath) > 0) {
+            $result['status'] = 'success';
+            $result['message'] = "แปลงไฟล์ PDF สำเร็จ ({$converted_count} ไฟล์)<br>Download <a href='/upload/quotation/ap/archive/Quotation_{$filefolder}_pdf.zip'>Quotation (PDF)</a>";
+        } else {
+            $result['status'] = 'error';
+            $result['message'] = "แปลง PDF ไม่สำเร็จ (แปลงได้ 0 จาก " . count($files_to_convert) . " ไฟล์) กรุณาตรวจสอบการติดตั้ง LibreOffice";
+        }
+
+        return $result;
+    }
+
     function convert_to_pdf($xlsx_path)
     {
         require_once APPPATH . 'libraries/QuotationExporter.php';
@@ -713,7 +849,7 @@ class QuotationAP extends MX_Controller
      *  - {folder}_pdf.zip      : PDF files only (filled when PDF conversion runs)
      * Media plan files are removed from the temp dir instead of being zipped.
      */
-    function zip_quotationAP($folder="", $convert_pdf=true) {
+    function zip_quotationAP($folder="", $export_type="both") {
 
         $filepath    = FCPATH."upload/quotation/ap/temp/{$folder}/";
         $archivepath = FCPATH."upload/quotation/ap/archive/";
@@ -722,15 +858,15 @@ class QuotationAP extends MX_Controller
         $xlsxZipName = "Quotation_{$folder}.zip";
         $pdfZipName  = "Quotation_{$folder}_pdf.zip";
 
-        // The media plan now travels back with the quotations: it carries the QT numbers
-        // the import wrote, one row per document, so the team can paste it straight into
-        // the PO Status file.
+        // Boolean flags
+        $needXlsx = ($export_type === 'both' || $export_type === 'excel');
+        $needPdf  = ($export_type === 'both' || $export_type === 'pdf');
 
         $xlsxZip = new ZipArchive;
         $pdfZip  = new ZipArchive;
 
-        $xlsxZipOk = $xlsxZip->open($archivepath.$xlsxZipName, ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE) === TRUE;
-        $pdfZipOk  = $convert_pdf && ($pdfZip->open($archivepath.$pdfZipName,  ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE) === TRUE);
+        $xlsxZipOk = $needXlsx && ($xlsxZip->open($archivepath.$xlsxZipName, ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE) === TRUE);
+        $pdfZipOk  = $needPdf  && ($pdfZip->open($archivepath.$pdfZipName,  ZIPARCHIVE::CREATE | ZIPARCHIVE::OVERWRITE) === TRUE);
 
         $xlsxCount = 0;
         $pdfCount  = 0;
@@ -760,7 +896,12 @@ class QuotationAP extends MX_Controller
                 closedir($handle);
             }
 
-            if ($xlsxZipOk) { $xlsxZip->close(); }
+            if ($xlsxZipOk) {
+                $xlsxZip->close();
+                if ($xlsxCount === 0 && file_exists($archivepath.$xlsxZipName)) {
+                    @unlink($archivepath.$xlsxZipName);
+                }
+            }
             if ($pdfZipOk)  { 
                 $pdfZip->close(); 
                 if ($pdfCount === 0 && file_exists($archivepath.$pdfZipName)) {
@@ -771,11 +912,9 @@ class QuotationAP extends MX_Controller
             array_map('unlink', glob("{$filepath}/*.*"));
             @rmdir($filepath);
 
-            // PDF zip only offered when it actually has content
-            $pdfLink = ($pdfZipOk && $pdfCount > 0)
-                ? " <a href='/upload/quotation/ap/archive/{$pdfZipName}'>PDF</a>"
-                : "";
-
+            if ($export_type === 'pdf') {
+                return "/upload/quotation/ap/archive/".$pdfZipName;
+            }
             return "/upload/quotation/ap/archive/".$xlsxZipName;
         } else {
             return "error";

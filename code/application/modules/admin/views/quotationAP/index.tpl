@@ -63,18 +63,35 @@
                         </div>
                         <div class="row">
                             <div class="col-md-12">
-                                <div class="form-group" style="margin-top: 5px; margin-bottom: 20px;">
+                                <div class="form-group" style="margin-top: 5px; margin-bottom: 15px;">
                                     <label style="font-weight: 600; margin-bottom: 8px;">รูปแบบไฟล์ที่ต้องการ Export:</label>
                                     <div>
-                                        <label class="radio-inline" style="font-weight: 500; cursor: pointer; margin-right: 25px;">
+                                        <label class="radio-inline" style="font-weight: 500; cursor: pointer; margin-right: 20px;">
                                             <input type="radio" name="export_type" id="export_type_both" value="both" checked>
-                                            <i class="fa fa-file-pdf-o text-danger"></i> <strong>Excel + PDF</strong> (แปลงเป็นไฟล์ PDF ด้วย)
+                                            <i class="fa fa-files-o text-primary"></i> <strong>Excel + PDF</strong> (แปลงทั้งสองรูปแบบ)
                                         </label>
-                                        <label class="radio-inline" style="font-weight: 500; cursor: pointer;">
+                                        <label class="radio-inline" style="font-weight: 500; cursor: pointer; margin-right: 20px;">
                                             <input type="radio" name="export_type" id="export_type_excel" value="excel">
                                             <i class="fa fa-file-excel-o text-success"></i> <strong>เฉพาะไฟล์ Excel</strong> (รวดเร็วกว่า ไม่แปลงเป็น PDF)
                                         </label>
+                                        <label class="radio-inline" style="font-weight: 500; cursor: pointer;">
+                                            <input type="radio" name="export_type" id="export_type_pdf" value="pdf">
+                                            <i class="fa fa-file-pdf-o text-danger"></i> <strong>เฉพาะไฟล์ PDF</strong> (ระบุ Path ของ Quotation Excel)
+                                        </label>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="row" id="pdf_path_row" style="display: none;">
+                            <div class="col-md-12">
+                                <div class="form-group" style="background: #fdf7f7; border: 1px solid #ebccd1; border-radius: 4px; padding: 12px 15px; margin-bottom: 20px;">
+                                    <label for="excel_source_path" style="color: #a94442; font-weight: 600;">
+                                        <i class="fa fa-folder-open-o"></i> ระบุ Path ของโฟลเดอร์หรือไฟล์ Quotation (Excel) ที่ต้องการแปลงเป็น PDF:
+                                    </label>
+                                    <input type="text" id="excel_source_path" name="excel_source_path" class="form-control" placeholder="เช่น C:\_quotation_script\AP_QT_Generator\code\public_html\upload\quotation\ap\temp\20261030052511 หรือไฟล์ .zip">
+                                    <span class="help-block" style="color: #777; margin-top: 5px; margin-bottom: 0; font-size: 12px;">
+                                        * สามารถระบุเป็น Full Path ของโฟลเดอร์, Relative Path ใน upload/, หรือ Path ของไฟล์ ZIP ที่มีไฟล์ Excel อยู่ข้างในได้
+                                    </span>
                                 </div>
                             </div>
                         </div>    
@@ -369,8 +386,30 @@ table.dataTable th {
             get_quotation_running();
         });
         
+        $('input[name="export_type"]').change(function() {
+            if ($(this).val() === 'pdf') {
+                $('#pdf_path_row').slideDown(200);
+                $('#excel_source_path').focus();
+            } else {
+                $('#pdf_path_row').slideUp(200);
+            }
+        });
+
         $('#submit_upload1').submit(function(e){
             e.preventDefault();
+
+            var exportType = $('input[name="export_type"]:checked').val();
+            var excelSourcePath = $.trim($('#excel_source_path').val());
+
+            if (exportType === 'pdf') {
+                if (excelSourcePath === '') {
+                    alert('กรุณาระบุ Path ของโฟลเดอร์หรือไฟล์ Quotation (Excel)');
+                    $('#excel_source_path').focus();
+                    return false;
+                }
+                submit_quotation(this);
+                return false;
+            }
             
             $validate = true;
             
