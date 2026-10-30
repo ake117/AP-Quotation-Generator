@@ -30,7 +30,7 @@ Password : APqt2026!local
 ```bash
 docker run -d --name qt_app --add-host=host.docker.internal:host-gateway \
   -p 8091:8091 -e DB_HOST=host.docker.internal \
-  -v C:/_quotation_script/QT_Generator/code:/app -w /app \
+  -v C:/_quotation_script/AP_QT_Generator/code:/app -w /app \
   qt_app_img php -S 0.0.0.0:8091 -t public_html
 # หยุด/เริ่ม: docker stop qt_app / docker start qt_app
 ```
