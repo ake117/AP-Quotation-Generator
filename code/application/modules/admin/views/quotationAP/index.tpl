@@ -56,7 +56,7 @@
                             </div>
                             <div class="col-md-6">        
                                 <div class="form-group">
-                                    <label for="status">Quotation Running</label>
+                                    <label for="status">Last Quotation No.</label>
                                     <input type="text" id="quotation_running" name="quotation_running" autocomplete="off" value="" class="form-control">                                    
                                 </div>
                             </div>
@@ -402,7 +402,7 @@ table.dataTable th {
             $quotation_running = $("#quotation_running").val();
             if ($quotation_running == '') {                    
                 if ($("#quotation_running").next().find(".label-danger").length == 0) {
-                    $("#quotation_running").after( '<p><span class="label label-danger">Quotation Running is required.</span></p>' );
+                    $("#quotation_running").after( '<p><span class="label label-danger">Last Quotation No. is required.</span></p>' );
                 } 
                 $validate = false;
             } else {

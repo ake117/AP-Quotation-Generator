@@ -717,7 +717,9 @@ class QuotationAP extends MX_Controller
                     if ($isPdf && $pdfZipOk) {
                         $pdfZip->addFile($filepath.$entry, $folder."/".$entry);
                         $pdfCount++;
-                    } elseif ($isXlsx && $xlsxZipOk) {
+                    } elseif ($isXlsx && $xlsxZipOk && preg_match('/^\d{4}[-_]/', $entry)) {
+                        // quotation files start with the quotation no ("2026-1689_...");
+                        // everything else in temp (uploaded media plan, AP_Media_Plan_*.xlsx) stays out of the zip
                         $xlsxZip->addFile($filepath.$entry, $folder."/".$entry);
                         $xlsxCount++;
                     }
