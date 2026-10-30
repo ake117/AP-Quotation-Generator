@@ -1,8 +1,7 @@
 # AP Quotation Generator
 
 ## ระบบสร้าง/จัดการใบเสนอราคา (Quotation) สำหรับงานโฆษณา Boost Post ของ AP (Thailand) 
-— พัฒนาต่อยอดบน CodeIgniter wpanel
-originally developed by Chat
+### พัฒนาต่อยอดบน CodeIgniter wpanel, originally developed by Chat
 ---
 
 ## ข้อมูลโปรเจกต์
@@ -10,7 +9,7 @@ originally developed by Chat
 | รายการ | รายละเอียด |
 |---|---|
 | Repo | `ake117/AP-Quotation-Generator` (private, branch `main`; เดิมชื่อ `AP_Quotation_by_Chat`) |
-| Local path | `/home/ake/AI_Projects/AP_QT_Generator` |
+| Local path | `C:\_quotation_script\AP_QT_Generator` (เดิม `...\QT_Generator`, เปลี่ยนชื่อ 30/10/2026) |
 | Framework | CodeIgniter **3.1.13** + Smarty template + AdminLTE 2.4 (skin ต่อ account) + PhpSpreadsheet 5.10 (ผ่าน composer) |
 | Database | MySQL 8.0 (local: WSL Ubuntu) — schema `production`, charset **utf8mb4** |
 | ต้นทาง DB dump | `code/database/production.sql` (Navicat dump จาก production.ewitewit.com, MySQL 5.7, 23/09/2026) |
