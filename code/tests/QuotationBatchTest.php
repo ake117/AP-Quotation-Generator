@@ -1,5 +1,6 @@
 <?php
 
+use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -72,6 +73,7 @@ final class QuotationBatchTest extends TestCase
 
     // ------------------------------------------------------- the note decides the count
 
+    #[Group('pdf')]
     public function test_a_note_with_one_project_id_is_one_document(): void
     {
         // Column C can be stale; the ID decides the name even when no split happens.
@@ -86,6 +88,7 @@ final class QuotationBatchTest extends TestCase
         $this->assertStringContainsString('Grande Pleno Pinklao - Charun 2', self::pdfText($docs[0]['pdf']));
     }
 
+    #[Group('pdf')]
     public function test_every_project_id_in_the_note_becomes_its_own_document(): void
     {
         $docs = $this->batch()->export($this->row(array(
@@ -120,6 +123,7 @@ final class QuotationBatchTest extends TestCase
         $this->assertSame(array(), QuotationBatch::projectIds('Boost post'));
     }
 
+    #[Group('pdf')]
     public function test_an_unknown_id_keeps_the_rows_project_instead_of_inventing_one(): void
     {
         $docs = $this->batch()->export($this->row(array('note' => '99999', 'budget_all' => 5000)), $this->outDir());
@@ -130,6 +134,7 @@ final class QuotationBatchTest extends TestCase
 
     // ------------------------------------------------------- the money
 
+    #[Group('pdf')]
     public function test_the_share_keeps_six_decimals_while_the_cell_shows_two(): void
     {
         $docs = $this->batch()->export($this->row(array(
@@ -151,6 +156,7 @@ final class QuotationBatchTest extends TestCase
         $this->assertEqualsWithDelta(10000.00, $carried, 0.005, 'the three documents must carry the whole budget');
     }
 
+    #[Group('pdf')]
     public function test_a_share_that_lands_on_a_satang_still_keeps_six_decimals(): void
     {
         $docs = $this->batch()->export($this->row(array(
@@ -168,6 +174,7 @@ final class QuotationBatchTest extends TestCase
         $this->assertEqualsWithDelta(15000.00, $carried, 0.005);
     }
 
+    #[Group('pdf')]
     public function test_an_id_with_letters_can_name_a_project(): void
     {
         $batch = new QuotationBatch(
@@ -185,6 +192,7 @@ final class QuotationBatchTest extends TestCase
         $this->assertStringContainsString('Aspire Sukhumvit - Rama 4', self::pdfText($docs[1]['pdf']));
     }
 
+    #[Group('pdf')]
     public function test_unequal_shares_can_be_given(): void
     {
         $docs = $this->batch()->export($this->row(array(
@@ -211,6 +219,7 @@ final class QuotationBatchTest extends TestCase
 
     // ------------------------------------------------------- naming from B + C
 
+    #[Group('pdf')]
     public function test_a_split_document_is_named_brief_name_plus_its_own_project(): void
     {
         // Rows 51 and 52 of the September plan: one brief, two projects, 5,000 each.
@@ -364,6 +373,7 @@ final class QuotationBatchTest extends TestCase
 
     // ------------------------------------------------------- merge still wins
 
+    #[Group('pdf')]
     public function test_a_merged_row_is_one_document_holding_every_item(): void
     {
         $docs = $this->batch()->export($this->row(array(
@@ -385,6 +395,7 @@ final class QuotationBatchTest extends TestCase
 
     // ------------------------------------------------------- identity of each document
 
+    #[Group('pdf')]
     public function test_each_document_gets_its_own_number_and_media_period(): void
     {
         $docs = $this->batch()->export($this->row(array(
