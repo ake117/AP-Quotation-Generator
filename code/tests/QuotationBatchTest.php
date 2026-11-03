@@ -249,6 +249,24 @@ final class QuotationBatchTest extends TestCase
         $this->assertSame('Pleno Town Petchkasem 81', QuotationBatch::withProject('', '', 'Pleno Town Petchkasem 81'));
     }
 
+    public function test_a_single_document_row_keeps_the_planners_brief(): void
+    {
+        // A row that is already one-document-per-ID (re-import of a split sheet) must
+        // not get any project appended to its brief — that is how a foreign project
+        // name ended up at the end of the wrong row.
+        $rows = QuotationBatch::splitRows($this->row(array(
+            'project'      => 'Pleno Phaholyothin - Saimai 2',
+            'project_file' => 'Pleno Phaholyothin - Saimai 2_16-25 ต.ค.นี้ UNLOCK DEAL',
+            'note'         => '70143',
+        )), array('2026/1754'));
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(
+            'Pleno Phaholyothin - Saimai 2_16-25 ต.ค.นี้ UNLOCK DEAL',
+            $rows[0]['project_file']
+        );
+    }
+
     public function test_split_numbers_run_on_from_the_last_one_used(): void
     {
         $issued = QuotationBatch::consecutiveNumbers(2026, 1590, 3);

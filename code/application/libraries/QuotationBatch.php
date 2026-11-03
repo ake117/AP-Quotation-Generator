@@ -205,12 +205,18 @@ final class QuotationBatch
             $projectId = $ids[$index] ?? null;
 
             if ($projectId !== null) {
-                $doc['project'] = self::nameOf($projectId, $row);
-                $doc['project_file'] = self::withProject(
-                    (string) ($row['project_file'] ?? ''),
-                    (string) ($row['project'] ?? ''),
-                    $doc['project']
-                );
+                if ($count > 1) {
+                    // Only a real split renames the project and the brief. A row that
+                    // already stands for one document (a re-import of a split sheet)
+                    // keeps the planner's own brief — appending here is how a foreign
+                    // project name ended up at the end of the wrong row.
+                    $doc['project'] = self::nameOf($projectId, $row);
+                    $doc['project_file'] = self::withProject(
+                        (string) ($row['project_file'] ?? ''),
+                        (string) ($row['project'] ?? ''),
+                        $doc['project']
+                    );
+                }
                 // Each row stands for one document, so it names one ID — otherwise the
                 // export would split it again.
                 $doc['note'] = $projectId;
